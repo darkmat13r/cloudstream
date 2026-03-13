@@ -14,6 +14,8 @@ coreKtx = "1.17.0"
 desugar_jdk_libs_nio = "2.1.5"
 dokkaGradlePlugin = "2.1.0"
 espressoCore = "3.7.0"
+roborazzi = "1.58.0"
+robolectric = "4.14.1"
 fragmentKtx = "1.8.9"
 ksoup = "0.2.6"
 ktor = "3.1.2"
@@ -42,7 +44,10 @@ safefile = "0.0.8"
 shimmer = "0.5.0"
 tmdbJava = "2.13.0"
 torrentserver = "7861970e038b35cd8c6918384e49caf26903e09e"
+tvFoundation = "1.0.0-alpha12"
+tvMaterial = "1.0.1"
 tvprovider = "1.1.0"
+composeMultiplatform = "1.8.0"
 video = "1.0.0"
 workRuntimeKtx = "2.11.1"
 zipline = "1.24.0"
@@ -76,6 +81,10 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
+roborazzi-core = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 junit-ktx = { module = "androidx.test.ext:junit-ktx", version.ref = "junitKtx" }
 juniversalchardet = { module = "com.github.albfernandez:juniversalchardet", version.ref = "juniversalchardet" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
@@ -108,7 +117,10 @@ safefile = { module = "com.github.LagradOst:SafeFile", version.ref = "safefile" 
 shimmer = { module = "com.facebook.shimmer:shimmer", version.ref = "shimmer" }
 tmdb-java = { module = "com.uwetrottmann.tmdb2:tmdb-java", version.ref = "tmdbJava" }
 torrentserver = { module = "com.github.recloudstream:torrentserver", version.ref = "torrentserver" }
+tv-foundation = { module = "androidx.tv:tv-foundation", version.ref = "tvFoundation" }
+tv-material = { module = "androidx.tv:tv-material", version.ref = "tvMaterial" }
 tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 video = { module = "com.google.android.mediahome:video", version.ref = "video" }
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 zipline = { module = "app.cash.zipline:zipline-android", version.ref = "zipline" }
@@ -123,6 +135,10 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlinGra
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" , version.ref = "kotlinGradlePlugin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlinGradlePlugin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinGradlePlugin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlinGradlePlugin" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
 
 [bundles]
 coil = ["coil", "coil-network-okhttp"]
