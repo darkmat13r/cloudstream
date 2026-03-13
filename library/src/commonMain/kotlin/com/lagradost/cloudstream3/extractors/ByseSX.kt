@@ -1,19 +1,17 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.Prerelease
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64DecodeArray
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
+import com.lagradost.cloudstream3.utils.CryptoHelper
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
-import java.net.URI
-import java.nio.charset.StandardCharsets
-import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import io.ktor.http.Url
 
 @Prerelease
 class Bysezejataos  : ByseSX() {
@@ -52,11 +50,11 @@ open class ByseSX : ExtractorApi() {
     }
 
     private fun getBaseUrl(url: String): String {
-        return URI(url).let { "${it.scheme}://${it.host}" }
+        return Url(url).let { "${it.protocol.name}://${it.host}" }
     }
 
     private fun getCodeFromUrl(url: String): String {
-        val path = URI(url).path ?: ""
+        val path = Url(url).encodedPath
         return path.trimEnd('/').substringAfterLast('/')
     }
 
@@ -94,13 +92,8 @@ open class ByseSX : ExtractorApi() {
         val ivBytes = b64UrlDecode(playback.iv)
         val cipherBytes = b64UrlDecode(playback.payload)
 
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        val spec = GCMParameterSpec(128, ivBytes)
-        val secretKey = SecretKeySpec(keyBytes, "AES")
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
-
-        val plainBytes = cipher.doFinal(cipherBytes)
-        var jsonStr = String(plainBytes, StandardCharsets.UTF_8)
+        val plainBytes = CryptoHelper.aesGcmDecrypt(cipherBytes, keyBytes, ivBytes, 128)
+        var jsonStr = plainBytes.decodeToString()
 
         if (jsonStr.startsWith("\uFEFF")) jsonStr = jsonStr.substring(1)
 
@@ -135,59 +128,65 @@ open class ByseSX : ExtractorApi() {
     }
 }
 
+@Serializable
 data class DetailsRoot(
     val id: Long,
     val code: String,
     val title: String,
-    @JsonProperty("poster_url")
+    @SerialName("poster_url")
     val posterUrl: String,
     val description: String,
-    @JsonProperty("created_at")
+    @SerialName("created_at")
     val createdAt: String,
-    @JsonProperty("owner_private")
+    @SerialName("owner_private")
     val ownerPrivate: Boolean,
-    @JsonProperty("embed_frame_url")
+    @SerialName("embed_frame_url")
     val embedFrameUrl: String,
 )
 
+@Serializable
 data class PlaybackRoot(
     val playback: Playback,
 )
 
+@Serializable
 data class Playback(
     val algorithm: String,
     val iv: String,
     val payload: String,
-    @JsonProperty("key_parts")
+    @SerialName("key_parts")
     val keyParts: List<String>,
-    @JsonProperty("expires_at")
+    @SerialName("expires_at")
     val expiresAt: String,
-    @JsonProperty("decrypt_keys")
+    @SerialName("decrypt_keys")
     val decryptKeys: DecryptKeys,
     val iv2: String,
     val payload2: String,
 )
 
+@Serializable
 data class DecryptKeys(
-    @JsonProperty("edge_1")
+    @SerialName("edge_1")
     val edge1: String,
-    @JsonProperty("edge_2")
+    @SerialName("edge_2")
     val edge2: String,
-    @JsonProperty("legacy_fallback")
+    @SerialName("legacy_fallback")
     val legacyFallback: String,
 )
 
+@Serializable
 data class PlaybackDecrypt(
     val sources: List<PlaybackDecryptSource>,
 )
 
+@Serializable
 data class PlaybackDecryptSource(
     val quality: String,
     val label: String,
-    @JsonProperty("mime_type")
+    @SerialName("mime_type")
     val mimeType: String,
     val url: String,
-    @JsonProperty("bitrate_kbps")
+    @SerialName("bitrate_kbps")
     val bitrateKbps: Long,
-    val height: Any?,
+    val height: kotlinx.serialization.json.JsonElement? = null,
 )

@@ -1,13 +1,14 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.APIHolder.getCaptchaToken
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import java.net.URI
+import io.ktor.http.Url
 
 open class Streamplay : ExtractorApi() {
     override val name = "Streamplay"
@@ -22,8 +23,8 @@ open class Streamplay : ExtractorApi() {
     ) {
         val request = app.get(url, referer = referer)
         val redirectUrl = request.url
-        val mainServer = URI(redirectUrl).let {
-            "${it.scheme}://${it.host}"
+        val mainServer = Url(redirectUrl).let {
+            "${it.protocol.name}://${it.host}"
         }
         val key = redirectUrl.substringAfter("embed-").substringBefore(".html")
         val token =
@@ -74,9 +75,10 @@ open class Streamplay : ExtractorApi() {
 
     }
 
+    @Serializable
     data class Source(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("label") val label: String? = null,
+        @SerialName("file") val file: String? = null,
+        @SerialName("label") val label: String? = null,
     )
 
 }

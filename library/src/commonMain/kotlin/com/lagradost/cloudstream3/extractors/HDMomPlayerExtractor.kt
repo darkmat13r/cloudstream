@@ -1,14 +1,14 @@
 // ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.extractors.helper.AesHelper
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 
 open class HDMomPlayer : ExtractorApi() {
     override val name            = "HDMomPlayer"
@@ -24,7 +24,7 @@ open class HDMomPlayer : ExtractorApi() {
         if (bePlayer != null) {
             val bePlayerPass = bePlayer.get(1)
             val bePlayerData = bePlayer.get(2)
-            val encrypted    = AesHelper.cryptoAESHandler(bePlayerData, bePlayerPass.toByteArray(), false)?.replace("\\", "") ?: throw ErrorLoadingException("failed to decrypt")
+            val encrypted    = AesHelper.cryptoAESHandler(bePlayerData, bePlayerPass.encodeToByteArray(), false)?.replace("\\", "") ?: throw ErrorLoadingException("failed to decrypt")
 
             m3uLink = Regex("""video_location\":\"([^\"]+)""").find(encrypted)?.groupValues?.get(1)
         } else {
@@ -32,7 +32,7 @@ open class HDMomPlayer : ExtractorApi() {
 
             val trackStr = Regex("""tracks:\[([^\]]+)""").find(iSource)?.groupValues?.get(1)
             if (trackStr != null) {
-                val tracks:List<Track> = jacksonObjectMapper().readValue("[${trackStr}]")
+                val tracks:List<Track> = AppUtils.parseJson("[${trackStr}]")
 
                 for (track in tracks) {
                     if (track.file == null || track.label == null) continue
@@ -61,11 +61,12 @@ open class HDMomPlayer : ExtractorApi() {
         )
     }
 
+    @Serializable
     data class Track(
-        @JsonProperty("file")     val file: String?,
-        @JsonProperty("label")    val label: String?,
-        @JsonProperty("kind")     val kind: String?,
-        @JsonProperty("language") val language: String?,
-        @JsonProperty("default")  val default: String?
+        @SerialName("file")     val file: String?,
+        @SerialName("label")    val label: String?,
+        @SerialName("kind")     val kind: String?,
+        @SerialName("language") val language: String?,
+        @SerialName("default")  val default: String?
     )
 }

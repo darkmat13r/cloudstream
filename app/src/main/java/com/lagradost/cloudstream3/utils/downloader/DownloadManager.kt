@@ -786,7 +786,7 @@ object VideoDownloadManager {
                 referer = referer,
                 verify = false
             )
-            val requestStream = request.body.byteStream()
+            val requestStream = java.io.ByteArrayInputStream(request.body.bytes())
 
             val buffer = ByteArray(bufferSize)
             var read: Int
@@ -862,7 +862,7 @@ object VideoDownloadManager {
         require(chuckSize > 1000)
 
         val headRequest = app.head(url = url, headers = headers, referer = referer, verify = false)
-        var contentLength = headRequest.size
+        var contentLength = headRequest.headers["Content-Length"]?.toLongOrNull()
         if (contentLength != null && contentLength <= 0) contentLength = null
 
         val hasRangeSupport = when (headRequest.headers["Accept-Ranges"]?.lowercase()?.trim()) {

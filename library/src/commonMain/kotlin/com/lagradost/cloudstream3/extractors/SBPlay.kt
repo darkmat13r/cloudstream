@@ -8,7 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getPostForm
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.jsoup.Jsoup
+import com.fleeksoft.ksoup.Ksoup
 
 //class SBPlay1 : SBPlay() {
 //    override var mainUrl = "https://sbplay1.com"
@@ -25,7 +25,7 @@ open class SBPlay : ExtractorApi() {
 
     override suspend fun getUrl(url: String, referer: String?): List<ExtractorLink> {
         val response = app.get(url, referer = referer).text
-        val document = Jsoup.parse(response)
+        val document = Ksoup.parse(html = response)
 
         val links = ArrayList<ExtractorLink>()
 
@@ -44,11 +44,11 @@ open class SBPlay : ExtractorApi() {
                         "https://sbplay.one/?op=notifications&open=&_=$unixTimeMS",
                         referer = href
                     )
-                    val hrefDocument = Jsoup.parse(hrefResponse)
+                    val hrefDocument = Ksoup.parse(html = hrefResponse)
                     val hrefSpan = hrefDocument.selectFirst("span > a")
                     if (hrefSpan == null) {
                         getPostForm(href, hrefResponse)?.let { form ->
-                            val postDocument = Jsoup.parse(form)
+                            val postDocument = Ksoup.parse(html = form)
                             val downloadBtn =
                                 postDocument.selectFirst("a.downloadbtn")?.attr("href")
                             if (downloadBtn.isNullOrEmpty()) {

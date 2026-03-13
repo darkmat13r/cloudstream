@@ -23,7 +23,7 @@ import com.lagradost.cloudstream3.utils.txt
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.cloudstream3.utils.Coroutines.runOnMainThread
-import me.xdrop.fuzzywuzzy.FuzzySearch
+import com.lagradost.cloudstream3.utils.FuzzySearch
 import java.io.File
 
 // String => repository url

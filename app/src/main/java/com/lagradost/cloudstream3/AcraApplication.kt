@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3
 
 import android.content.Context
+import com.lagradost.api.WeakRef
 import com.lagradost.api.setContext
 import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.removeKeys
@@ -34,7 +35,7 @@ class AcraApplication {
 		get() = _context?.get()
 		internal set(value) {
 			_context = WeakReference(value)
-			setContext(WeakReference(value))
+			setContext(WeakRef(value as Any))
 		}
 
 		/*@Deprecated(

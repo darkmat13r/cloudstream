@@ -1,8 +1,8 @@
 package com.lagradost.cloudstream3.utils
 
+import kotlinx.serialization.Serializable
 import android.util.Log
 import androidx.annotation.StringRes
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.getMalId
 import com.lagradost.cloudstream3.mvvm.logError
@@ -118,22 +118,25 @@ object AniSkip {
         }
     }
 
+    @Serializable
     data class AniSkipResponse(
-        @JsonSerialize val found: Boolean,
-        @JsonSerialize val results: List<Stamp>?,
-        @JsonSerialize val message: String?,
-        @JsonSerialize val statusCode: Int
+        val found: Boolean,
+        val results: List<Stamp>?,
+        val message: String?,
+        val statusCode: Int
     )
 
+    @Serializable
     data class Stamp(
-        @JsonSerialize val interval: AniSkipInterval,
-        @JsonSerialize val skipType: String,
-        @JsonSerialize val skipId: String,
-        @JsonSerialize val episodeLength: Double
+        val interval: AniSkipInterval,
+        val skipType: String,
+        val skipId: String,
+        val episodeLength: Double
     )
 
+    @Serializable
     data class AniSkipInterval(
-        @JsonSerialize val startTime: Double,
-        @JsonSerialize val endTime: Double
+        val startTime: Double,
+        val endTime: Double
     )
 }

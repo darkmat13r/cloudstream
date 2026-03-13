@@ -1,11 +1,12 @@
 // ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.fasterxml.jackson.annotation.JsonProperty
 
 open class TRsTX : ExtractorApi() {
     override val name            = "TRsTX"
@@ -62,8 +63,9 @@ open class TRsTX : ExtractorApi() {
         }
     }
 
+    @Serializable
     data class TrstxVideoData(
-        @JsonProperty("title") val title: String? = null,
-        @JsonProperty("file")  val file: String?  = null
+        @SerialName("title") val title: String? = null,
+        @SerialName("file")  val file: String?  = null
     )
 }

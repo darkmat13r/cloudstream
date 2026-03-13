@@ -1,4 +1,5 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.Serializable
 
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
@@ -33,6 +34,7 @@ open class Acefile : ExtractorApi() {
 
     }
 
+    @Serializable
     data class Source(
         val data: String? = null,
     )

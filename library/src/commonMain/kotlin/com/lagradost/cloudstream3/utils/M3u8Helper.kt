@@ -5,9 +5,6 @@ import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.app
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 import kotlin.math.pow
 
 /** backwards api surface */
@@ -105,11 +102,7 @@ object M3u8Helper2 {
         index: Int,
     ): ByteArray {
         val ivKey = if (iv.isEmpty()) defaultIv(index) else iv
-        val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        val skSpec = SecretKeySpec(secretKey, "AES")
-        val ivSpec = IvParameterSpec(ivKey)
-        c.init(Cipher.DECRYPT_MODE, skSpec, ivSpec)
-        return c.doFinal(data)
+        return CryptoHelper.aesCbcDecrypt(data, secretKey, ivKey)
     }
 
     private fun getParentLink(uri: String): String {
@@ -122,7 +115,7 @@ object M3u8Helper2 {
         return !url.startsWith("https://") && !url.startsWith("http://")
     }
 
-    @Throws
+    @Throws(Exception::class)
     suspend fun m3u8Generation(
         m3u8: M3u8Helper.M3u8Stream,
         returnThis: Boolean = true
@@ -227,7 +220,7 @@ object M3u8Helper2 {
             return null
         }
 
-        @Throws
+        @Throws(Exception::class)
         suspend fun resolveLink(index: Int): ByteArray {
             if (index < 0 || index >= size) throw IllegalArgumentException("index must be in the bounds of the ts")
             val ts = allTsLinks[index]
@@ -244,7 +237,7 @@ object M3u8Helper2 {
         }
     }
 
-    @Throws
+    @Throws(Exception::class)
     suspend fun hslLazy(
         playlistStream: M3u8Helper.M3u8Stream,
         selectBest: Boolean = true,
@@ -326,7 +319,7 @@ object M3u8Helper2 {
                 encryptionUri = "${getParentLink(playlistStream.streamUrl)}/$encryptionUri"
             }
 
-            encryptionIv = match[3].toByteArray()
+            encryptionIv = match[3].encodeToByteArray()
             val encryptionKeyResponse =
                 app.get(encryptionUri, headers = playlistStream.headers, verify = false)
             encryptionData = encryptionKeyResponse.body.bytes()

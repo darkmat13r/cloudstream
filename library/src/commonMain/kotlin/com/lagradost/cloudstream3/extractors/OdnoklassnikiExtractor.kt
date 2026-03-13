@@ -1,8 +1,9 @@
 // ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.USER_AGENT
@@ -32,7 +33,7 @@ open class Odnoklassniki : ExtractorApi() {
         val embedUrl = url.replace("/video/","/videoembed/")
         val videoReq  = app.get(embedUrl, headers=headers).text.replace("\\&quot;", "\"").replace("\\\\", "\\")
             .replace(Regex("\\\\u([0-9A-Fa-f]{4})")) { matchResult ->
-                Integer.parseInt(matchResult.groupValues[1], 16).toChar().toString()
+                matchResult.groupValues[1].toInt(16).toChar().toString()
             }
         val videosStr = Regex(""""videos":(\[[^]]*])""").find(videoReq)?.groupValues?.get(1) ?: throw ErrorLoadingException("Video not found")
         val videos    = AppUtils.tryParseJson<List<OkRuVideo>>(videosStr) ?: throw ErrorLoadingException("Video not found")
@@ -66,8 +67,9 @@ open class Odnoklassniki : ExtractorApi() {
         }
     }
 
+    @Serializable
     data class OkRuVideo(
-        @JsonProperty("name") val name: String,
-        @JsonProperty("url")  val url: String,
+        @SerialName("name") val name: String,
+        @SerialName("url")  val url: String,
     )
 }

@@ -1,4 +1,5 @@
 @file:Suppress("DEPRECATION")
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 
 package com.lagradost.cloudstream3.ui.player
 
@@ -104,11 +105,14 @@ import com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName
 import com.lagradost.cloudstream3.utils.WIDEVINE_UUID
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import kotlinx.coroutines.delay
+import io.ktor.http.takeFrom
 import okhttp3.Interceptor
+import okhttp3.OkHttpClient
 import org.chromium.net.CronetEngine
 import java.io.File
 import java.security.SecureRandom
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import java.util.concurrent.Executors
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
@@ -182,11 +186,19 @@ class CS3IPlayer : IPlayer {
     data class DrmMetadata(
         val kid: String? = null,
         val key: String? = null,
-        val uuid: UUID,
+        val uuid: Uuid,
         val kty: String? = null,
         val licenseUrl: String? = null,
         val keyRequestParameters: HashMap<String, String>,
-    )
+    ) {
+        /** Convert kotlin.uuid.Uuid to java.util.UUID for ExoPlayer APIs */
+        fun toJavaUuid(): java.util.UUID {
+            val hexString = uuid.toHexString()
+            return java.util.UUID.fromString(
+                "${hexString.substring(0, 8)}-${hexString.substring(8, 12)}-${hexString.substring(12, 16)}-${hexString.substring(16, 20)}-${hexString.substring(20)}"
+            )
+        }
+    }
 
     override fun getDuration(): Long? = exoPlayer?.duration
     override fun getPosition(): Long? = exoPlayer?.currentPosition
@@ -739,10 +751,11 @@ class CS3IPlayer : IPlayer {
             headers: Map<String, String>?,
             interceptor: Interceptor?
         ): HttpDataSource.Factory {
+            val baseOkHttpClient = app.baseClient as OkHttpClient
             val client = if (interceptor == null) {
-                app.baseClient
+                baseOkHttpClient
             } else {
-                app.baseClient.newBuilder()
+                baseOkHttpClient.newBuilder()
                     .addInterceptor(interceptor)
                     .build()
             }
@@ -797,10 +810,11 @@ class CS3IPlayer : IPlayer {
                 it.key.equals("User-Agent", ignoreCase = true)
             }?.value ?: USER_AGENT
 
+            val baseOkHttpClient = app.baseClient as OkHttpClient
             val source = if (interceptor == null) {
                 if (engine == null) {
                     Log.d(TAG, "Using DefaultHttpDataSource for $link")
-                    OkHttpDataSource.Factory(app.baseClient).setUserAgent(userAgent)
+                    OkHttpDataSource.Factory(baseOkHttpClient).setUserAgent(userAgent)
                 } else {
                     Log.d(TAG, "Using CronetDataSource for $link")
                     CronetDataSource.Factory(engine, Executors.newSingleThreadExecutor())
@@ -812,7 +826,7 @@ class CS3IPlayer : IPlayer {
                 }
             } else {
                 Log.d(TAG, "Using OkHttpDataSource for $link")
-                val client = app.baseClient.newBuilder()
+                val client = baseOkHttpClient.newBuilder()
                     .addInterceptor(interceptor)
                     .build()
                 OkHttpDataSource.Factory(client).setUserAgent(userAgent)
@@ -1263,7 +1277,7 @@ class CS3IPlayer : IPlayer {
                             .setMultiSession(false)
                             .setKeyRequestParameters(drm.keyRequestParameters)
                             .setUuidAndExoMediaDrmProvider(
-                                drm.uuid,
+                                drm.toJavaUuid(),
                                 FrameworkMediaDrm.DEFAULT_PROVIDER
                             )
                             .build(drmCallback)
@@ -1284,7 +1298,7 @@ class CS3IPlayer : IPlayer {
                             .setMultiSession(true)
                             .setKeyRequestParameters(drm.keyRequestParameters)
                             .setUuidAndExoMediaDrmProvider(
-                                drm.uuid,
+                                drm.toJavaUuid(),
                                 FrameworkMediaDrm.DEFAULT_PROVIDER
                             )
                             .build(drmCallback)
@@ -1869,7 +1883,23 @@ class CS3IPlayer : IPlayer {
             }
 
             val provider = getApiFromNameNull(link.source)
-            val interceptor: Interceptor? = provider?.getVideoInterceptor(link)
+            val csInterceptor = provider?.getVideoInterceptor(link)
+            // Wrap our KMP Interceptor into an OkHttp Interceptor
+            val interceptor: Interceptor? = csInterceptor?.let { csInt ->
+                Interceptor { chain ->
+                    val original = chain.request()
+                    val builder = original.newBuilder()
+                    val httpRequestBuilder = io.ktor.client.request.HttpRequestBuilder().apply {
+                        url.takeFrom(original.url.toString())
+                    }
+                    kotlinx.coroutines.runBlocking { csInt.intercept(httpRequestBuilder) }
+                    // Apply any headers that the interceptor added
+                    httpRequestBuilder.headers.build().forEach { name, values ->
+                        values.forEach { value -> builder.addHeader(name, value) }
+                    }
+                    chain.proceed(builder.build())
+                }
+            }
 
             val onlineSourceFactory =
                 createVideoSource(

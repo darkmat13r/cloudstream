@@ -81,7 +81,7 @@ class SubtitleResource {
         url: String,
         nameGenerator: (String, File) -> String? = { _, _ -> null }
     ) {
-        val source = app.get(url).okhttpResponse.body.source()
+        val source = okio.Buffer().write(app.get(url).body.bytes())
         val zip = downloadFile(source)
         val realFiles = unzip(zip)
         zip.deleteRecursively()

@@ -3,10 +3,6 @@ package com.lagradost.cloudstream3.extractors
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.*
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.EvaluatorException
-import org.mozilla.javascript.Scriptable
-import java.util.*
 
 
 open class Userload : ExtractorApi() {
@@ -35,16 +31,7 @@ open class Userload : ExtractorApi() {
     }
 
     private fun evaluateMath(mathExpression : String): String {
-        val rhino = Context.enter()
-        rhino.initStandardObjects()
-        rhino.setInterpretedMode(true)
-        val scope: Scriptable = rhino.initStandardObjects()
-        return try {
-            rhino.evaluateString(scope, "eval($mathExpression)", "JavaScript", 1, null).toString()
-        }
-        catch (e: EvaluatorException){
-            ""
-        }
+        return JsEngine.evaluate("eval($mathExpression)")
     }
 
     private fun decodeVideoJs(text: String): List<String> {

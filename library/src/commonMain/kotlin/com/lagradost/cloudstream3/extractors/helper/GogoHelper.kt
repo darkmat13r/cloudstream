@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors.helper
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.base64DecodeArray
@@ -8,15 +9,13 @@ import com.lagradost.cloudstream3.base64Encode
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.utils.AppUtils
+import com.lagradost.cloudstream3.utils.CryptoHelper
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.jsoup.nodes.Document
-import java.net.URI
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import com.fleeksoft.ksoup.nodes.Document
+import io.ktor.http.Url
 
 object GogoHelper {
 
@@ -41,15 +40,12 @@ object GogoHelper {
         encrypt: Boolean = true
     ): String {
         //println("IV: $iv, Key: $secretKeyString, encrypt: $encrypt, Message: $string")
-        val ivParameterSpec = IvParameterSpec(iv.toByteArray())
-        val secretKey = SecretKeySpec(secretKeyString.toByteArray(), "AES")
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivBytes = iv.encodeToByteArray()
+        val keyBytes = secretKeyString.encodeToByteArray()
         return if (!encrypt) {
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec)
-            String(cipher.doFinal(base64DecodeArray(string)))
+            CryptoHelper.aesCbcDecrypt(base64DecodeArray(string), keyBytes, ivBytes).decodeToString()
         } else {
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParameterSpec)
-            base64Encode(cipher.doFinal(string.toByteArray()))
+            base64Encode(CryptoHelper.aesCbcEncrypt(string.encodeToByteArray(), keyBytes, ivBytes))
         }
     }
 
@@ -88,8 +84,8 @@ object GogoHelper {
         val foundKey = secretKey ?: getKey(base64Decode(id) + foundIv) ?: return@safeApiCall
         val foundDecryptKey = secretDecryptKey ?: foundKey
 
-        val uri = URI(iframeUrl)
-        val mainUrl = "https://" + uri.host
+        val parsedUrl = Url(iframeUrl)
+        val mainUrl = "https://" + parsedUrl.host
 
         val encryptedId = cryptoHandler(id, foundIv, foundKey)
         val encryptRequestData = if (isUsingAdaptiveData) {
@@ -145,19 +141,22 @@ object GogoHelper {
         }
     }
 
+    @Serializable
     data class GogoSources(
-        @JsonProperty("source") val source: List<GogoSource>?,
-        @JsonProperty("sourceBk") val sourceBk: List<GogoSource>?,
+        @SerialName("source") val source: List<GogoSource>?,
+        @SerialName("sourceBk") val sourceBk: List<GogoSource>?,
     )
 
+    @Serializable
     data class GogoSource(
-        @JsonProperty("file") val file: String,
-        @JsonProperty("label") val label: String?,
-        @JsonProperty("type") val type: String?,
-        @JsonProperty("default") val default: String? = null
+        @SerialName("file") val file: String,
+        @SerialName("label") val label: String?,
+        @SerialName("type") val type: String?,
+        @SerialName("default") val default: String? = null
     )
 
+    @Serializable
     data class GogoJsonData(
-        @JsonProperty("data") val data: String? = null
+        @SerialName("data") val data: String? = null
     )
 }

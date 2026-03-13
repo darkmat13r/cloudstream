@@ -3,9 +3,9 @@ package com.lagradost.cloudstream3.extractors
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.JsEngine
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.mozilla.javascript.Context
 
 class Watchadsontape : StreamTape() {
     override var mainUrl = "https://watchadsontape.com"
@@ -35,17 +35,7 @@ open class StreamTape : ExtractorApi() {
                     ?.html()?.lines()?.firstOrNull{ it.contains("botlink').innerHTML") }?.let {
                         val scriptContent =
                             it.substringAfter(").innerHTML").replaceFirst("=", "var url =")
-                        val rhino = Context.enter()
-                        rhino.setInterpretedMode(true)
-                        val scope = rhino.initStandardObjects()
-                        var result = ""
-                        try {
-                            rhino.evaluateString(scope, scriptContent, "url", 1, null)
-                            result = scope.get("url", scope).toString()
-                        }finally {
-                            rhino.close()
-                        }
-                        result
+                        JsEngine.evaluateAndGetVariable(scriptContent, "url")
                     }
             if(!result.isNullOrEmpty()){
                 val extractedUrl = "https:${result}&stream=1"

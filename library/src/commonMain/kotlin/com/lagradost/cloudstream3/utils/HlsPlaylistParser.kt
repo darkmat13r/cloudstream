@@ -19,14 +19,14 @@
  */
 package com.lagradost.cloudstream3.utils
 
-import java.io.IOException
-import java.net.URI
-import java.nio.ByteBuffer
-import java.util.UUID
+import io.ktor.http.Url
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Suppress("unused")
+@OptIn(ExperimentalUuidApi::class)
 object HlsPlaylistParser {
     private const val LOG_TAG: String = "HlsPlaylistParser"
     private const val PLAYLIST_HEADER: String = "#EXTM3U"
@@ -187,10 +187,10 @@ object HlsPlaylistParser {
 
     data class SchemeData(
         /**
-         * The {@link UUID} of the DRM scheme, or {@link C#UUID_NIL} if the data is universal (i.e.
+         * The {@link Uuid} of the DRM scheme, or {@link C#UUID_NIL} if the data is universal (i.e.
          * applies to all schemes).
          */
-        val uuid: UUID,
+        val uuid: Uuid,
         /** The URL of the server to which license requests should be made. May be null if unknown. */
         val licenseServerUrl: String? = null,
         /** The mimeType of {@link #data}. */
@@ -234,7 +234,7 @@ object HlsPlaylistParser {
             if (codecArray.isEmpty()) {
                 return null
             }
-            val builder = java.lang.StringBuilder()
+            val builder = StringBuilder()
             for (codec in codecArray) {
                 if (trackType == MimeTypes.getTrackTypeOfCodec(codec)) {
                     if (builder.isNotEmpty()) {
@@ -263,7 +263,7 @@ object HlsPlaylistParser {
             if (codecArray.isEmpty()) {
                 return null
             }
-            val builder = java.lang.StringBuilder()
+            val builder = StringBuilder()
             for (codec in codecArray) {
                 if (trackType != MimeTypes.getTrackTypeOfCodec(codec)) {
                     if (builder.isNotEmpty()) {
@@ -277,8 +277,8 @@ object HlsPlaylistParser {
     }
 
     object UriUtil {
-        fun resolveToUri(baseUri: String?, referenceUri: String?): URI {
-            return URI.create(resolve(baseUri, referenceUri))
+        fun resolveToUri(baseUri: String?, referenceUri: String?): Url {
+            return Url(resolve(baseUri, referenceUri))
         }
 
 
@@ -425,7 +425,7 @@ object HlsPlaylistParser {
          * @param limit The limit (exclusive) of the path in `uri`.
          */
         private fun removeDotSegments(
-            uri: java.lang.StringBuilder,
+            uri: StringBuilder,
             offset: Int,
             limit: Int
         ): String {
@@ -455,14 +455,14 @@ object HlsPlaylistParser {
                 // "." or "..", remove the appropriate segments of the path.
                 if (i == segmentStart + 1 && uri[segmentStart] == '.') {
                     // Given "abc/def/./ghi", remove "./" to get "abc/def/ghi".
-                    uri.delete(segmentStart, nextSegmentStart)
+                    uri.deleteRange(segmentStart, nextSegmentStart)
                     limit -= nextSegmentStart - segmentStart
                     i = segmentStart
                 } else if (i == segmentStart + 2 && uri[segmentStart] == '.' && uri[segmentStart + 1] == '.') {
                     // Given "abc/def/../ghi", remove "def/../" to get "abc/ghi".
                     val prevSegmentStart = uri.lastIndexOf("/", segmentStart - 2) + 1
                     val removeFrom = if (prevSegmentStart > offset) prevSegmentStart else offset
-                    uri.delete(removeFrom, nextSegmentStart)
+                    uri.deleteRange(removeFrom, nextSegmentStart)
                     limit -= nextSegmentStart - removeFrom
                     segmentStart = prevSegmentStart
                     i = prevSegmentStart
@@ -540,7 +540,7 @@ object HlsPlaylistParser {
          *
          * ClearKey is supported on Android devices running Android 5.0 (API Level 21) and up.
          */
-        val CLEARKEY_UUID = UUID(-0x1d8e62a7567a4c37L, 0x781AB030AF78D30EL)
+        val CLEARKEY_UUID = Uuid.fromLongs(-0x1d8e62a7567a4c37L, 0x781AB030AF78D30EL)
 
         /**
          * UUID for the Widevine DRM scheme.
@@ -548,7 +548,7 @@ object HlsPlaylistParser {
          *
          * Widevine is supported on Android devices running Android 4.3 (API Level 18) and up.
          */
-        val WIDEVINE_UUID = UUID(-0x121074568629b532L, -0x5c37d8232ae2de13L)
+        val WIDEVINE_UUID = Uuid.fromLongs(-0x121074568629b532L, -0x5c37d8232ae2de13L)
 
         /**
          * UUID for the PlayReady DRM scheme.
@@ -557,7 +557,7 @@ object HlsPlaylistParser {
          * PlayReady is supported on all AndroidTV devices. Note that most other Android devices do not
          * provide PlayReady support.
          */
-        val PLAYREADY_UUID = UUID(-0x65fb0f8667bfbd7aL, -0x546d19a41f77a06bL)
+        val PLAYREADY_UUID = Uuid.fromLongs(-0x65fb0f8667bfbd7aL, -0x546d19a41f77a06bL)
 
 
         /** "cenc" scheme type name as defined in ISO/IEC 23001-7:2016.  */
@@ -1066,8 +1066,27 @@ object HlsPlaylistParser {
     }
 
     object PsshAtomUtil {
+        private fun MutableList<Byte>.putInt(value: Int) {
+            add((value shr 24 and 0xFF).toByte())
+            add((value shr 16 and 0xFF).toByte())
+            add((value shr 8 and 0xFF).toByte())
+            add((value and 0xFF).toByte())
+        }
+
+        private fun MutableList<Byte>.putLong(value: Long) {
+            putInt((value shr 32).toInt())
+            putInt(value.toInt())
+        }
+
+        private fun MutableList<Byte>.putUuid(uuid: Uuid) {
+            uuid.toLongs { msb, lsb ->
+                putLong(msb)
+                putLong(lsb)
+            }
+        }
+
         fun buildPsshAtom(
-            systemId: UUID, keyIds: Array<UUID>?, data: ByteArray?
+            systemId: Uuid, keyIds: Array<Uuid>?, data: ByteArray?
         ): ByteArray {
             val dataLength = data?.size ?: 0
             var psshBoxLength: Int =
@@ -1075,26 +1094,24 @@ object HlsPlaylistParser {
             if (keyIds != null) {
                 psshBoxLength += 4 /* KID_count */ + (keyIds.size * 16) /* KIDs */
             }
-            val psshBox: ByteBuffer = ByteBuffer.allocate(psshBoxLength)
+            val psshBox = ArrayList<Byte>(psshBoxLength)
             psshBox.putInt(psshBoxLength)
             psshBox.putInt(Mp4Box.TYPE_pssh)
             psshBox.putInt(if (keyIds != null) 0x01000000 else 0 /* version=(buildV1Atom ? 1 : 0), flags=0 */)
-            psshBox.putLong(systemId.mostSignificantBits)
-            psshBox.putLong(systemId.leastSignificantBits)
+            psshBox.putUuid(systemId)
             if (keyIds != null) {
                 psshBox.putInt(keyIds.size)
                 for (keyId in keyIds) {
-                    psshBox.putLong(keyId.mostSignificantBits)
-                    psshBox.putLong(keyId.leastSignificantBits)
+                    psshBox.putUuid(keyId)
                 }
             }
-            if (data != null && data.size != 0) {
+            if (data != null && data.isNotEmpty()) {
                 psshBox.putInt(data.size)
-                psshBox.put(data)
+                for (b in data) psshBox.add(b)
             } else {
                 psshBox.putInt(0)
             }
-            return psshBox.array()
+            return psshBox.toByteArray()
         }
     }
 
@@ -1108,7 +1125,7 @@ object HlsPlaylistParser {
         val contentIsMalformed: Boolean,
         /** The [data type][DataType] of the parsed bitstream.  */
         val dataType: Int
-    ) : IOException(message, cause) {
+    ) : Exception(message, cause) {
         /** A data type constant for a manifest file.  */
         companion object {
             const val DATA_TYPE_MANIFEST: Int = 4
@@ -1187,7 +1204,7 @@ object HlsPlaylistParser {
             return SchemeData(
                 uuid = C.WIDEVINE_UUID,
                 mimeType = "hls",
-                data = line.toByteArray(charset = Charsets.UTF_8)
+                data = line.encodeToByteArray()
             )
         } else if (KEYFORMAT_PLAYREADY == keyFormat && "1" == keyFormatVersions) {
             val uriString = parseStringAttr(line, REGEX_URI, variableDefinitions)
@@ -1270,7 +1287,7 @@ object HlsPlaylistParser {
     }
 
     data class Variant(
-        val url: URI,
+        val url: Url,
         val format: Format,
         val videoGroupId: String?,
         val audioGroupId: String?,
@@ -1323,7 +1340,7 @@ object HlsPlaylistParser {
 
     data class Rendition(
         /** The rendition's url, or null if the tag does not have a URI attribute. */
-        val url: URI?,
+        val url: Url?,
 
         /** Format information associated with this rendition. */
         val format: Format,
@@ -1343,7 +1360,7 @@ object HlsPlaylistParser {
         val tags: List<String>,
 
         /** All of the media playlist URLs referenced by the playlist. */
-        //val mediaPlaylistUrls: List<URI>,
+        //val mediaPlaylistUrls: List<Url>,
 
         /** The variants declared by the playlist. */
         val variants: List<Variant>,
@@ -1725,12 +1742,12 @@ object HlsPlaylistParser {
         return null
     }
 
-    @Throws(IOException::class)
+    @Throws(Exception::class)
     private fun parseMultivariantPlaylist(
         iterator: Iterator<String>, baseUri: String
     ): HlsMultivariantPlaylist {
-        val urlToVariantInfos: HashMap<URI, ArrayList<VariantInfo>?> =
-            HashMap<URI, ArrayList<VariantInfo>?>()
+        val urlToVariantInfos: HashMap<Url, ArrayList<VariantInfo>?> =
+            HashMap<Url, ArrayList<VariantInfo>?>()
         val variableDefinitions = HashMap<String, String>()
         val variants: ArrayList<Variant> = ArrayList<Variant>()
         val videos: ArrayList<Rendition> = ArrayList<Rendition>()
@@ -1853,7 +1870,7 @@ object HlsPlaylistParser {
                     parseOptionalStringAttr(line, REGEX_SUBTITLES, variableDefinitions)
                 val closedCaptionsGroupId: String? =
                     parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, variableDefinitions)
-                val uri: URI
+                val uri: Url
                 if (isIFrameOnlyVariant) {
                     uri =
                         UriUtil.resolveToUri(
@@ -1911,7 +1928,7 @@ object HlsPlaylistParser {
         // TODO: Don't deduplicate variants by URL.
         val deduplicatedVariants = variants.distinctBy { it.url }
         /*val deduplicatedVariants: ArrayList<Variant> = ArrayList<Variant>()
-        val urlsInDeduplicatedVariants = HashSet<URI>()
+        val urlsInDeduplicatedVariants = HashSet<Url>()
         for (i in variants.indices) {
             val variant: Variant = variants[i]
             if (urlsInDeduplicatedVariants.add(variant.url)) {
@@ -1947,7 +1964,7 @@ object HlsPlaylistParser {
 
             val referenceUri: String? =
                 parseOptionalStringAttr(line, REGEX_URI, variableDefinitions)
-            val uri: URI? =
+            val uri: Url? =
                 if (referenceUri == null) null else UriUtil.resolveToUri(baseUri, referenceUri)
             //val metadata =
             //    Metadata(HlsTrackMetadataEntry(groupId, name, emptyList<T>()))

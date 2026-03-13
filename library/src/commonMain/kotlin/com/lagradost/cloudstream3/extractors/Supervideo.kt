@@ -1,14 +1,16 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 
+@Serializable
 data class Files(
-    @JsonProperty("file") val id: String,
-    @JsonProperty("label") val label: String? = null,
+    @SerialName("file") val id: String,
+    @SerialName("label") val label: String? = null,
 )
 
 open class Supervideo : ExtractorApi() {

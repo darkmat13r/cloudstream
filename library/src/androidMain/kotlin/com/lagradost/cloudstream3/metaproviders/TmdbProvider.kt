@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.metaproviders
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.Actor
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.ErrorLoadingException
@@ -45,18 +46,19 @@ import com.uwetrottmann.tmdb2.enumerations.AppendToResponseItem
 import com.uwetrottmann.tmdb2.enumerations.VideoType
 import retrofit2.awaitResponse
 import retrofit2.Response
-import java.util.Calendar
+import com.lagradost.cloudstream3.utils.DateHelper
 
 /**
  * episode and season starting from 1
  * they are null if movie
  * */
+@Serializable
 data class TmdbLink(
-    @JsonProperty("imdbID") val imdbID: String?,
-    @JsonProperty("tmdbID") val tmdbID: Int?,
-    @JsonProperty("episode") val episode: Int?,
-    @JsonProperty("season") val season: Int?,
-    @JsonProperty("movieName") val movieName: String? = null,
+    @SerialName("imdbID") val imdbID: String?,
+    @SerialName("tmdbID") val tmdbID: Int?,
+    @SerialName("episode") val episode: Int?,
+    @SerialName("season") val season: Int?,
+    @SerialName("movieName") val movieName: String? = null,
 )
 
 open class TmdbProvider : MainAPI() {
@@ -98,9 +100,7 @@ open class TmdbProvider : MainAPI() {
             this.posterUrl = getImageUrl(poster_path)
             this.score = Score.from10(vote_average)
             this.year = first_air_date?.let {
-                Calendar.getInstance().apply {
-                    time = it
-                }.get(Calendar.YEAR)
+                DateHelper.yearFromEpochMillis(it.time)
             }
         }
     }
@@ -116,9 +116,7 @@ open class TmdbProvider : MainAPI() {
             this.posterUrl = getImageUrl(poster_path)
             this.score = Score.from10(vote_average)
             this.year = release_date?.let {
-                Calendar.getInstance().apply {
-                    time = it
-                }.get(Calendar.YEAR)
+                DateHelper.yearFromEpochMillis(it.time)
             }
         }
     }
@@ -175,9 +173,7 @@ open class TmdbProvider : MainAPI() {
         ) {
             posterUrl = getImageUrl(poster_path)
             year = first_air_date?.let {
-                Calendar.getInstance().apply {
-                    time = it
-                }.get(Calendar.YEAR)
+                DateHelper.yearFromEpochMillis(it.time)
             }
             plot = overview
             addImdbId(external_ids?.imdb_id)
@@ -217,9 +213,7 @@ open class TmdbProvider : MainAPI() {
         ) {
             posterUrl = getImageUrl(poster_path)
             year = release_date?.let {
-                Calendar.getInstance().apply {
-                    time = it
-                }.get(Calendar.YEAR)
+                DateHelper.yearFromEpochMillis(it.time)
             }
             plot = overview
             addImdbId(external_ids?.imdb_id)

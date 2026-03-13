@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
@@ -51,12 +52,14 @@ open class Vidoza: ExtractorApi() {
         }
     }
 
-    private class VinovoDataList: ArrayList<VinovoVideoData>()
+    @Serializable
+    private class VinovoDataList : MutableList<VinovoVideoData> by mutableListOf()
 
+    @Serializable
     private data class VinovoVideoData(
-        @JsonProperty("src") val source: String,
-        @JsonProperty("type") val type: String?,
-        @JsonProperty("label") val label: String?,
-        @JsonProperty("res") val resolution: String?,
+        @SerialName("src") val source: String,
+        @SerialName("type") val type: String?,
+        @SerialName("label") val label: String?,
+        @SerialName("res") val resolution: String?,
     )
 }

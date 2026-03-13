@@ -4,13 +4,34 @@ import com.lagradost.api.BuildConfig
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.ErrorLoadingException
 import kotlinx.coroutines.*
-import java.io.InterruptedIOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import javax.net.ssl.SSLHandshakeException
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.reflect.full.NoSuchPropertyException
+
+/**
+ * Checks if this throwable is a network timeout-related exception.
+ * Matches JVM's SocketTimeoutException and InterruptedIOException by class name
+ * to remain KMP-compatible.
+ */
+private fun Throwable.isTimeoutException(): Boolean {
+    val name = this::class.simpleName ?: return false
+    return name == "SocketTimeoutException" || name == "InterruptedIOException" || name == "ConnectTimeoutException"
+}
+
+/**
+ * Checks if this throwable is an unknown host exception (DNS resolution failure).
+ */
+private fun Throwable.isUnknownHostException(): Boolean {
+    val name = this::class.simpleName ?: return false
+    return name == "UnknownHostException"
+}
+
+/**
+ * Checks if this throwable is an SSL handshake exception.
+ */
+private fun Throwable.isSSLHandshakeException(): Boolean {
+    val name = this::class.simpleName ?: return false
+    return name == "SSLHandshakeException"
+}
 
 const val DEBUG_EXCEPTION = "THIS IS A DEBUG EXCEPTION!"
 const val DEBUG_PRINT = "DEBUG PRINT"
@@ -70,7 +91,7 @@ sealed class Resource<out T> {
 
 fun logError(throwable: Throwable) {
     Log.d("ApiError", "-------------------------------------------------------------------")
-    Log.d("ApiError", "safeApiCall: " + throwable.localizedMessage)
+    Log.d("ApiError", "safeApiCall: " + (throwable.message ?: "Unknown error"))
     Log.d("ApiError", "safeApiCall: " + throwable.message)
     throwable.printStackTrace()
     Log.d("ApiError", "-------------------------------------------------------------------")
@@ -127,16 +148,12 @@ suspend fun <T> suspendSafeApiCall(apiCall: suspend () -> T): T? {
 }
 
 fun Throwable.getAllMessages(): String {
-    return (this.localizedMessage ?: "") + (this.cause?.getAllMessages()?.let { "\n$it" } ?: "")
+    return (this.message ?: "") + (this.cause?.getAllMessages()?.let { "\n$it" } ?: "")
 }
 
 fun Throwable.getStackTracePretty(showMessage: Boolean = true): String {
-    val prefix = if (showMessage) this.localizedMessage?.let { "\n$it" } ?: "" else ""
-    return prefix + this.stackTrace.joinToString(
-        separator = "\n"
-    ) {
-        "${it.fileName} ${it.lineNumber}"
-    }
+    val prefix = if (showMessage) this.message?.let { "\n$it" } ?: "" else ""
+    return prefix + this.stackTraceToString()
 }
 
 fun <T> safeFail(throwable: Throwable): Resource<T> {
@@ -163,66 +180,65 @@ fun CoroutineScope.launchSafe(
 fun <T> throwAbleToResource(
     throwable: Throwable
 ): Resource<T> {
-    return when (throwable) {
-        is NoSuchMethodException, is NoSuchFieldException, is NoSuchMethodError, is NoSuchFieldError, is NoSuchPropertyException -> {
+    return when {
+        throwable::class.simpleName == "NoSuchMethodError" ||
+            throwable::class.simpleName == "NoSuchFieldError" ||
+            throwable::class.simpleName == "NoSuchMethodException" ||
+            throwable::class.simpleName == "NoSuchFieldException" -> {
             Resource.Failure(
                 false,
                 "App or extension is outdated, update the app or try pre-release.\n${throwable.message}" // todo add exact version?
             )
         }
 
-        is NullPointerException -> {
-            for (line in throwable.stackTrace) {
-                if (line?.fileName?.endsWith("provider.kt", ignoreCase = true) == true) {
-                    return Resource.Failure(
-                        false,
-                        "NullPointerException at ${line.fileName} ${line.lineNumber}\nSite might have updated or added Cloudflare/DDOS protection"
-                    )
-                }
+        throwable is NullPointerException -> {
+            // stackTrace is JVM-only; try to extract info from the message
+            val providerInfo = throwable.stackTraceToString().lines().firstOrNull { line ->
+                line.contains("provider.kt", ignoreCase = true)
             }
-            safeFail(throwable)
+            if (providerInfo != null) {
+                Resource.Failure(
+                    false,
+                    "NullPointerException in provider\nSite might have updated or added Cloudflare/DDOS protection"
+                )
+            } else {
+                safeFail(throwable)
+            }
         }
 
-        is SocketTimeoutException, is InterruptedIOException -> {
+        throwable.isTimeoutException() -> {
             Resource.Failure(
                 true,
                 "Connection Timeout\nPlease try again later."
             )
         }
-//        is HttpException -> {
-//            Resource.Failure(
-//                false,
-//                throwable.statusCode,
-//                null,
-//                throwable.message ?: "HttpException"
-//            )
-//        }
-        is UnknownHostException -> {
+
+        throwable.isUnknownHostException() -> {
             Resource.Failure(
                 true,
                 "Cannot connect to server, try again later.\n${throwable.message}"
             )
         }
 
-        is ErrorLoadingException -> {
+        throwable is ErrorLoadingException -> {
             Resource.Failure(
                 true,
                 throwable.message ?: "Error loading, try again later."
             )
         }
 
-        is NotImplementedError -> {
+        throwable is NotImplementedError -> {
             Resource.Failure(false, "This operation is not implemented.")
         }
 
-        is SSLHandshakeException -> {
+        throwable.isSSLHandshakeException() -> {
             Resource.Failure(
                 true,
                 (throwable.message ?: "SSLHandshakeException") + "\nTry a VPN or DNS."
             )
         }
 
-        is CancellationException -> {
+        throwable is CancellationException -> {
             throwable.cause?.let {
                 throwAbleToResource(it)
             } ?: safeFail(throwable)

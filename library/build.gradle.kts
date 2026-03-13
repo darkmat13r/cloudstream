@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.lint)
     alias(libs.plugins.android.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.dokka)
 }
@@ -37,6 +38,10 @@ kotlin {
 
     jvm()
 
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+
     compilerOptions {
         freeCompilerArgs.addAll(
             "-Xexpect-actual-classes",
@@ -50,14 +55,28 @@ kotlin {
         }
 
         commonMain.dependencies {
-            implementation(libs.nicehttp) // HTTP Lib
-            implementation(libs.jackson.module.kotlin) // JSON Parser
+            api(libs.ktor.client.core) // HTTP Client (api so types are visible to consumers)
+            implementation(libs.ksoup) // HTML Parser (KMP)
+            implementation(libs.kotlinx.serialization.json) // JSON Parser
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.fuzzywuzzy) // Match Extractors
-            implementation(libs.jsoup) // HTML Parser
-            implementation(libs.rhino) // Run JavaScript
-            implementation(libs.newpipeextractor)
-            implementation(libs.tmdb.java) // TMDB API v3 Wrapper Made with RetroFit
+        }
+
+        androidMain.dependencies {
+            implementation(libs.ktor.client.okhttp) // HTTP Engine (JVM/Android)
+            implementation(libs.rhino) // Run JavaScript (JVM-only)
+            implementation(libs.newpipeextractor) // YouTube extraction (JVM-only)
+            implementation(libs.tmdb.java) // TMDB API v3 Wrapper (JVM-only)
+        }
+
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp) // HTTP Engine (JVM/Android)
+            implementation(libs.rhino) // Run JavaScript (JVM-only)
+            implementation(libs.newpipeextractor) // YouTube extraction (JVM-only)
+            implementation(libs.tmdb.java) // TMDB API v3 Wrapper (JVM-only)
+        }
+
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin) // Ktor Darwin engine for iOS
         }
     }
 }

@@ -2,7 +2,7 @@ package com.lagradost.cloudstream3.utils
 
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.Coroutines.main
-import org.jsoup.Jsoup
+import com.fleeksoft.ksoup.Ksoup
 import java.lang.Thread.sleep
 import java.util.*
 import kotlin.concurrent.thread
@@ -22,7 +22,7 @@ object FillerEpisodeCheck {
         if (list != null) return true
         try {
             val result = app.get("$MAIN_URL/shows").text
-            val documented = Jsoup.parse(result)
+            val documented = Ksoup.parse(html = result)
             val localHTMLList = documented.select("div#ShowList > div.Group > ul > li > a")
             val localList = HashMap<String, String>()
             for (i in localHTMLList) {
@@ -92,7 +92,7 @@ object FillerEpisodeCheck {
             if (!localList.containsKey(realQuery)) return null
             val href = localList[realQuery]?.replace(MAIN_URL, "") ?: return null // JUST IN CASE
             val result = app.get("$MAIN_URL$href").text
-            val documented = Jsoup.parse(result)
+            val documented = Ksoup.parse(html = result)
             val hashMap = HashMap<Int, Boolean>()
             documented.select("table.EpisodeList > tbody > tr").forEach {
                 val type = it.selectFirst("td.Type > span")?.text() == "Filler"

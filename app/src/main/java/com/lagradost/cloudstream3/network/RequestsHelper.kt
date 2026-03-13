@@ -4,24 +4,55 @@ import android.content.Context
 import androidx.preference.PreferenceManager
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.USER_AGENT
+import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mvvm.safe
-import com.lagradost.nicehttp.Requests
-import com.lagradost.nicehttp.ignoreAllSSLErrors
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import okhttp3.Cache
 import okhttp3.Headers
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.conscrypt.Conscrypt
 import java.io.File
+import java.security.SecureRandom
 import java.security.Security
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
-fun Requests.initClient(context: Context) {
-    this.baseClient = buildDefaultClient(context)
+fun CloudStreamClient.initClient(context: Context) {
+    val okHttpClient = buildDefaultClient(context)
+    app.baseClient = okHttpClient
+    app.client = HttpClient(OkHttp) {
+        engine {
+            preconfigured = okHttpClient
+        }
+    }
+}
+
+/**
+ * Disables SSL certificate verification for the OkHttpClient.Builder.
+ * Replaces com.lagradost.nicehttp.ignoreAllSSLErrors.
+ */
+fun OkHttpClient.Builder.ignoreAllSSLErrors(): OkHttpClient.Builder {
+    val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+    })
+    val sslContext = SSLContext.getInstance("SSL").apply {
+        init(null, trustAllCerts, SecureRandom())
+    }
+    sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+    hostnameVerifier { _, _ -> true }
+    return this
 }
 
 fun buildDefaultClient(context: Context): OkHttpClient {
     safe { Security.insertProviderAt(Conscrypt.newProvider(), 1) }
-    
+
     val settingsManager = PreferenceManager.getDefaultSharedPreferences(context)
     val dns = settingsManager.getInt(context.getString(R.string.dns_pref), 0)
     val baseClient = OkHttpClient.Builder()
@@ -56,6 +87,19 @@ fun buildDefaultClient(context: Context): OkHttpClient {
 //    get() {
 //        return this.headers.getCookies("Cookie")
 //    }
+
+/**
+ * Extension property to parse cookies from an OkHttp Request's Cookie header.
+ * Replaces com.lagradost.nicehttp.cookies extension.
+ */
+val Request.cookies: Map<String, String>
+    get() {
+        val cookieHeader = header("Cookie") ?: return emptyMap()
+        return cookieHeader.split(";").associate {
+            val split = it.split("=", limit = 2)
+            (split.getOrNull(0)?.trim() ?: "") to (split.getOrNull(1)?.trim() ?: "")
+        }.filter { it.key.isNotBlank() && it.value.isNotBlank() }
+    }
 
 private val DEFAULT_HEADERS = mapOf("user-agent" to USER_AGENT)
 

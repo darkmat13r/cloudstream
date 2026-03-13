@@ -1,8 +1,6 @@
 package com.lagradost.cloudstream3.network
 
 import com.lagradost.cloudstream3.USER_AGENT
-import okhttp3.Interceptor
-import okhttp3.Request
 
 /**
  * When used as Interceptor additionalUrls cannot be returned, use WebViewResolver(...).resolveUsingWebView(...)
@@ -36,8 +34,8 @@ expect class WebViewResolver(
         url: String,
         referer: String? = null,
         method: String = "GET",
-        requestCallBack: (Request) -> Boolean = { false },
-    ) : Pair<Request?, List<Request>>
+        requestCallBack: (WebViewRequest) -> Boolean = { false },
+    ): Pair<WebViewRequest?, List<WebViewRequest>>
 
     /**
      * @param requestCallBack asynchronously return matched requests by either interceptUrl or additionalUrls. If true, destroy WebView.
@@ -48,15 +46,15 @@ expect class WebViewResolver(
         referer: String? = null,
         headers: Map<String, String> = emptyMap(),
         method: String = "GET",
-        requestCallBack: (Request) -> Boolean = { false },
-    ) : Pair<Request?, List<Request>>
+        requestCallBack: (WebViewRequest) -> Boolean = { false },
+    ): Pair<WebViewRequest?, List<WebViewRequest>>
 
     /**
      * @param requestCallBack asynchronously return matched requests by either interceptUrl or additionalUrls. If true, destroy WebView.
      * @return the final request (by interceptUrl) and all the collected urls (by additionalUrls).
      * */
     suspend fun resolveUsingWebView(
-        request: Request,
-        requestCallBack: (Request) -> Boolean = { false }
-    ): Pair<Request?, List<Request>>
+        request: WebViewRequest,
+        requestCallBack: (WebViewRequest) -> Boolean = { false }
+    ): Pair<WebViewRequest?, List<WebViewRequest>>
 }

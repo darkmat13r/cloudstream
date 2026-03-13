@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
@@ -69,31 +70,49 @@ open class Gofile : ExtractorApi() {
 
     private fun formatBytes(bytes: Long): String {
         return when {
-            bytes < 1024L * 1024 * 1024 -> "%.2f MB".format(bytes.toDouble() / (1024 * 1024))
-            else -> "%.2f GB".format(bytes.toDouble() / (1024 * 1024 * 1024))
+            bytes < 1024L * 1024 * 1024 -> {
+                val mb = bytes.toDouble() / (1024 * 1024)
+                "${roundTo2Decimals(mb)} MB"
+            }
+            else -> {
+                val gb = bytes.toDouble() / (1024 * 1024 * 1024)
+                "${roundTo2Decimals(gb)} GB"
+            }
         }
     }
 
+    private fun roundTo2Decimals(value: Double): String {
+        val rounded = (value * 100).toLong() / 100.0
+        val intPart = rounded.toLong()
+        val fracPart = ((rounded - intPart) * 100).toLong()
+        return "$intPart.${fracPart.toString().padStart(2, '0')}"
+    }
+
+    @Serializable
     data class AccountResponse(
-        @JsonProperty("data") val data: AccountData? = null
+        @SerialName("data") val data: AccountData? = null
     )
 
+    @Serializable
     data class AccountData(
-        @JsonProperty("token") val token: String? = null
+        @SerialName("token") val token: String? = null
     )
 
+    @Serializable
     data class GofileResponse(
-        @JsonProperty("data") val data: GofileData? = null
+        @SerialName("data") val data: GofileData? = null
     )
 
+    @Serializable
     data class GofileData(
-        @JsonProperty("children") val children: Map<String, GofileFile>? = null
+        @SerialName("children") val children: Map<String, GofileFile>? = null
     )
 
+    @Serializable
     data class GofileFile(
-        @JsonProperty("type") val type: String? = null,
-        @JsonProperty("name") val name: String? = null,
-        @JsonProperty("link") val link: String? = null,
-        @JsonProperty("size") val size: Long? = 0L
+        @SerialName("type") val type: String? = null,
+        @SerialName("name") val name: String? = null,
+        @SerialName("link") val link: String? = null,
+        @SerialName("size") val size: Long? = 0L
     )
 }

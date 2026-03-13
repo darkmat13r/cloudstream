@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
@@ -38,10 +39,11 @@ open class Streamup() : ExtractorApi() {
         )
     }
 
+    @Serializable
     private data class StreamUpFileInfo(
         val title: String,
         val thumbnail: String,
-        @JsonProperty("streaming_url")
+        @SerialName("streaming_url")
         val streamingUrl: String,
         // subtitles seems to always be empty
         // val subtitles: List<Any>

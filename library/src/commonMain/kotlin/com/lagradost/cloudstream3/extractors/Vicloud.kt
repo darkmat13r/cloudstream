@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
@@ -21,7 +22,7 @@ open class Vicloud : ExtractorApi() {
     ) {
         val id = Regex("\"apiQuery\":\"(.*?)\"").find(app.get(url).text)?.groupValues?.getOrNull(1)
         app.get(
-            "$mainUrl/api/?$id=&_=${System.currentTimeMillis()}",
+            "$mainUrl/api/?$id=&_=${com.lagradost.cloudstream3.utils.DateHelper.currentTimeMillis()}",
             headers = mapOf(
                 "X-Requested-With" to "XMLHttpRequest"
             ),
@@ -41,13 +42,15 @@ open class Vicloud : ExtractorApi() {
 
     }
 
+    @Serializable
     private data class Sources(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("label") val label: String? = null,
+        @SerialName("file") val file: String? = null,
+        @SerialName("label") val label: String? = null,
     )
 
+    @Serializable
     private data class Responses(
-        @JsonProperty("sources") val sources: List<Sources>? = arrayListOf(),
+        @SerialName("sources") val sources: List<Sources>? = arrayListOf(),
     )
 
 }

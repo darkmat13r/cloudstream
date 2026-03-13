@@ -3,7 +3,6 @@ package com.lagradost.cloudstream3.utils
 import com.lagradost.cloudstream3.mvvm.launchSafe
 import com.lagradost.cloudstream3.mvvm.logError
 import kotlinx.coroutines.*
-import java.util.Collections.synchronizedList
 
 expect fun runOnMainThreadNative(work: (() -> Unit))
 object Coroutines {
@@ -53,11 +52,11 @@ object Coroutines {
     }
 
     /**
-     * Safe to add and remove how you want
+     * Note: This list is NOT thread-safe on non-JVM targets.
      * If you want to iterate over the list then you need to do:
      * synchronized(allProviders) { code here }
      **/
     fun <T> threadSafeListOf(vararg items: T): MutableList<T> {
-        return synchronizedList(items.toMutableList())
+        return items.toMutableList()
     }
 }

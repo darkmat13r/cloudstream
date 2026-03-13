@@ -1,7 +1,6 @@
 package com.lagradost.cloudstream3.utils
 
 import com.lagradost.cloudstream3.mvvm.logError
-import java.util.regex.Pattern
 import kotlin.math.pow
 
 // https://github.com/cylonu87/JsUnpacker
@@ -15,9 +14,8 @@ class JsUnpacker(packedJS: String?) {
      */
     fun detect(): Boolean {
         val js = packedJS!!.replace(" ", "")
-        val p = Pattern.compile("eval\\(function\\(p,a,c,k,e,[rd]")
-        val m = p.matcher(js)
-        return m.find()
+        val regex = Regex("eval\\(function\\(p,a,c,k,e,[rd]")
+        return regex.containsMatchIn(js)
     }
 
     /**
@@ -28,45 +26,44 @@ class JsUnpacker(packedJS: String?) {
     fun unpack(): String? {
         val js = packedJS ?: return null
         try {
-            var p =
-                Pattern.compile("""\}\s*\('(.*)',\s*(.*?),\s*(\d+),\s*'(.*?)'\.split\('\|'\)""", Pattern.DOTALL)
-            var m = p.matcher(js)
-            if (m.find() && m.groupCount() == 4) {
-                val payload = m.group(1)?.replace("\\'", "'") ?: ""
-                val radixStr = m.group(2)
-                val countStr = m.group(3)
-                val symtab = (m.group(4)?.split("\\|".toRegex()) ?: emptyList()).toTypedArray()
+            val outerRegex =
+                Regex("""\}\s*\('(.*)',\s*(.*?),\s*(\d+),\s*'(.*?)'\.split\('\|'\)""", RegexOption.DOT_MATCHES_ALL)
+            val outerMatch = outerRegex.find(js)
+            if (outerMatch != null && outerMatch.groupValues.size - 1 == 4) {
+                val payload = outerMatch.groupValues[1].replace("\\'", "'")
+                val radixStr = outerMatch.groupValues[2]
+                val countStr = outerMatch.groupValues[3]
+                val symtab = outerMatch.groupValues[4].split("|").toTypedArray()
                 var radix = 36
                 var count = 0
                 try {
-                    radix = radixStr?.toIntOrNull() ?: radix
+                    radix = radixStr.toIntOrNull() ?: radix
                 } catch (_: Exception) {
                 }
                 try {
-                    count = countStr?.toIntOrNull() ?: 0
+                    count = countStr.toIntOrNull() ?: 0
                 } catch (_: Exception) {
                 }
                 if (symtab.size != count) {
                     throw Exception("Unknown p.a.c.k.e.r. encoding")
                 }
                 val unbase = Unbase(radix)
-                p = Pattern.compile("""\b[a-zA-Z0-9_]+\b""")
-                m = p.matcher(payload)
-                val decoded = StringBuilder(payload)
-                var replaceOffset = 0
-                while (m.find()) {
-                    val word = m.group(0)
-                    val x = if (word == null) 0 else unbase.unbase(word)
+                val wordRegex = Regex("""\b[a-zA-Z0-9_]+\b""")
+                var decoded = payload
+                // Process matches from end to start to avoid offset issues
+                val matches = wordRegex.findAll(payload).toList().reversed()
+                for (match in matches) {
+                    val word = match.value
+                    val x = unbase.unbase(word)
                     var value: String? = null
-                    if (x < symtab.size && x >= 0) {
+                    if (x in 0 until symtab.size) {
                         value = symtab[x]
                     }
-                    if (!value.isNullOrEmpty() && !word.isNullOrEmpty()) {
-                        decoded.replace(m.start() + replaceOffset, m.end() + replaceOffset, value)
-                        replaceOffset += value.length - word.length
+                    if (!value.isNullOrEmpty() && word.isNotEmpty()) {
+                        decoded = decoded.substring(0, match.range.first) + value + decoded.substring(match.range.last + 1)
                     }
                 }
-                return decoded.toString()
+                return decoded
             }
         } catch (e: Exception) {
             logError(e)
@@ -200,14 +197,15 @@ class JsUnpacker(packedJS: String?) {
                     }
                 }
 
-                Class.forName(load.substring(load.length - c.size, load.length)).name
+                // Return the constructed class name string directly (no JVM reflection)
+                load.substring(load.length - c.size, load.length)
             } catch (_: Exception) {
                 try {
                     var f = c[2].toChar().toString()
                     for (w in z.indices) {
                         f += z[w].toChar()
                     }
-                    return Class.forName(f.substring(0b001, f.length)).name
+                    f.substring(0b001, f.length)
                 } catch (_: Exception) {
                     null
                 }

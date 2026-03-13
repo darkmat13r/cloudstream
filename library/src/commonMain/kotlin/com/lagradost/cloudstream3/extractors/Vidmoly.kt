@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
@@ -30,14 +31,16 @@ open class Vidmoly : ExtractorApi() {
         return this.replace(Regex("\"?$str\"?"), "\"$str\"")
     }
 
+    @Serializable
     private data class Source(
-        @JsonProperty("file") val file: String? = null,
+        @SerialName("file") val file: String? = null,
     )
 
+    @Serializable
     private data class SubSource(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("label") val label: String? = null,
-        @JsonProperty("kind") val kind: String? = null,
+        @SerialName("file") val file: String? = null,
+        @SerialName("label") val label: String? = null,
+        @SerialName("kind") val kind: String? = null,
     )
 
     override suspend fun getUrl(

@@ -1,13 +1,21 @@
 package com.lagradost.cloudstream3.utils
 
-import me.xdrop.fuzzywuzzy.FuzzySearch
-import java.util.Locale
+import com.lagradost.cloudstream3.utils.FuzzySearch
 
-// If you find a way to use SettingsGeneral getCurrentLocale()
-// instead of this function do it.
-fun getCurrentLocale(): String {
-    return Locale.getDefault().toLanguageTag()
-}
+/**
+ * Returns the current system locale as an IETF BCP 47 language tag.
+ * Platform-specific implementations should return the appropriate locale.
+ */
+expect fun getCurrentLocale(): String
+
+/**
+ * Returns a localized language display name for the given IETF tag.
+ * Falls back to [nativeName] if localization is not possible.
+ * @param ietfTag IETF BCP 47 language tag of the language to display
+ * @param nativeName fallback native name of the language
+ * @param localizedTo IETF tag of the locale to localize to (null = system locale)
+ */
+expect fun getLocalizedLanguageName(ietfTag: String, nativeName: String, localizedTo: String? = null): String
 
 @Suppress(
     "unused",
@@ -49,21 +57,7 @@ object SubtitleHelper {
         val openSubtitles: String, // inconsistent codes that do not conform ISO 639
     ) {
         fun localizedName(localizedTo: String? = null): String {
-            // Use system locale to localize language name
-            val localeOfLangCode = Locale.forLanguageTag(this.IETF_tag)
-            val localeOfLocalizeTo = Locale.forLanguageTag(localizedTo ?: getCurrentLocale())
-            val sysLocalizedName = localeOfLangCode.getDisplayName(localeOfLocalizeTo)
-
-            val langCodeWithCountry = "${localeOfLangCode.language} (" // ${localeOfLangCode.country})"
-            val failedToLocalize =
-                sysLocalizedName.equals(this.IETF_tag, ignoreCase = true) ||
-                sysLocalizedName.contains(langCodeWithCountry, ignoreCase = true)
-
-            return if (failedToLocalize)
-                // fallback to native language name
-                this.nativeName
-            else
-                sysLocalizedName
+            return getLocalizedLanguageName(this.IETF_tag, this.nativeName, localizedTo)
         }
 
         fun nameNextToFlagEmoji(localizedTo: String? = null): String {
@@ -315,10 +309,21 @@ object SubtitleHelper {
         val flagOffset = 0x1F1E6  // regional indicator "[A]"
         val offset = flagOffset - asciiOffset
 
-        val firstChar: Int = Character.codePointAt(countryLetters, 0) + offset
-        val secondChar: Int = Character.codePointAt(countryLetters, 1) + offset
+        val firstCodePoint: Int = countryLetters[0].code + offset
+        val secondCodePoint: Int = countryLetters[1].code + offset
 
-        return String(Character.toChars(firstChar)) + String(Character.toChars(secondChar))
+        // Convert Unicode code points to a String (handles surrogate pairs for code points > 0xFFFF)
+        fun codePointToString(cp: Int): String {
+            return if (cp <= 0xFFFF) {
+                cp.toChar().toString()
+            } else {
+                val high = ((cp - 0x10000) shr 10) + 0xD800
+                val low = ((cp - 0x10000) and 0x3FF) + 0xDC00
+                "${high.toChar()}${low.toChar()}"
+            }
+        }
+
+        return codePointToString(firstCodePoint) + codePointToString(secondCodePoint)
     }
 
     // when (langTag = country) or (langTag contains country)

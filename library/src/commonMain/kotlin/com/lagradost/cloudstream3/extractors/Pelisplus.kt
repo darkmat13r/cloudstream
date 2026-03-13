@@ -10,7 +10,7 @@ import com.lagradost.cloudstream3.utils.extractorApis
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.jsoup.Jsoup
+import com.fleeksoft.ksoup.Ksoup
 
 /**
  * overrideMainUrl is necessary for for other vidstream clones like vidembed.cc
@@ -49,7 +49,7 @@ open class Pelisplus(val mainUrl: String) {
                 println("Generated vidstream download link: $link")
                 val page = app.get(link, referer = extractorUrl)
 
-                val pageDoc = Jsoup.parse(page.text)
+                val pageDoc = Ksoup.parse(html = page.text)
                 val qualityRegex = Regex("(\\d+)P")
 
                 //a[download]
@@ -76,7 +76,7 @@ open class Pelisplus(val mainUrl: String) {
             }
 
             with(app.get(extractorUrl)) {
-                val document = Jsoup.parse(this.text)
+                val document = Ksoup.parse(html = this.text)
                 val primaryLinks = document.select("ul.list-server-items > li.linkserver")
                 //val extractedLinksList: MutableList<ExtractorLink> = mutableListOf()
 

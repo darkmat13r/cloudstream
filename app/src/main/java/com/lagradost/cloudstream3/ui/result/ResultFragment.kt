@@ -28,6 +28,7 @@ const val START_ACTION_LOAD_EP = 2
 /**
  * Future proofed way to mark episodes as watched
  **/
+@kotlinx.serialization.Serializable
 enum class VideoWatchState {
     /** Default value when no key is set */
     None,

@@ -17,8 +17,9 @@ open class EmturbovidExtractor : ExtractorApi() {
             url, referer = referer ?: "$mainUrl/"
         )
         val playerScript =
-            response.document.selectXpath("//script[contains(text(),'var urlPlay')]")
-                .html()
+            response.document.select("script")
+                .firstOrNull { it.data().contains("var urlPlay") }
+                ?.html() ?: ""
 
         val sources = mutableListOf<ExtractorLink>()
         if (playerScript.isNotBlank()) {

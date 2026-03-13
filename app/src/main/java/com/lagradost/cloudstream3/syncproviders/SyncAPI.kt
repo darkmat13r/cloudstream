@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.ui.SyncWatchType
 import com.lagradost.cloudstream3.ui.library.ListSorting
 import com.lagradost.cloudstream3.utils.UiText
-import me.xdrop.fuzzywuzzy.FuzzySearch
+import com.lagradost.cloudstream3.utils.FuzzySearch
 import java.util.Date
 
 /**

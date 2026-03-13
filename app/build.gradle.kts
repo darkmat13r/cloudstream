@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.dokka)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
@@ -210,13 +211,12 @@ dependencies {
     implementation(libs.qrcode.kotlin) // QR Code for PIN Auth on TV
 
     // Extensions & Other Libs
-    implementation(libs.jsoup) // HTML Parser
+    implementation(libs.ksoup) // HTML Parser (KMP)
     implementation(libs.rhino) // Run JavaScript
-    implementation(libs.fuzzywuzzy) // Library/Ext Searching with Levenshtein Distance
     implementation(libs.safefile) // To Prevent the URI File Fu*kery
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio) // NIO Flavor Needed for NewPipeExtractor
     implementation(libs.conscrypt.android) // To Fix SSL Fu*kery on Android 9
-    implementation(libs.jackson.module.kotlin) // JSON Parser
+    implementation(libs.kotlinx.serialization.json) // JSON Parser
     implementation(libs.zipline)
 
     // Torrent Support
@@ -224,7 +224,8 @@ dependencies {
 
     // Downloading & Networking
     implementation(libs.work.runtime.ktx)
-    implementation(libs.nicehttp) // HTTP Lib
+    implementation(libs.nicehttp) // HTTP Lib (kept for transitive OkHttp dependency)
+    implementation(libs.ktor.client.okhttp) // Ktor OkHttp Engine for CloudStreamClient
 
     implementation(project(":library") {
         // There does not seem to be a good way of getting the android flavor.
@@ -273,6 +274,7 @@ tasks.withType<KotlinJvmCompile> {
         jvmTarget.set(javaTarget)
         jvmDefault.set(JvmDefaultMode.ENABLE)
         optIn.add("com.lagradost.cloudstream3.Prerelease")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
         freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }

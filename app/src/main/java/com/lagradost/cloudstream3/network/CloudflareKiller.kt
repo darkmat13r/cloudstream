@@ -6,11 +6,10 @@ import androidx.annotation.AnyThread
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mvvm.debugWarning
 import com.lagradost.cloudstream3.mvvm.safe
-import com.lagradost.nicehttp.Requests.Companion.await
-import com.lagradost.nicehttp.cookies
 import kotlinx.coroutines.runBlocking
 import okhttp3.Headers
 import okhttp3.Interceptor
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.net.URI
@@ -102,11 +101,11 @@ class CloudflareKiller : Interceptor {
 
         val headers =
             getHeaders(request.headers.toMap() + userAgentMap, cookies + request.cookies)
-        return app.baseClient.newCall(
+        return (app.baseClient as OkHttpClient).newCall(
             request.newBuilder()
                 .headers(headers)
                 .build()
-        ).await()
+        ).execute()
     }
 
     private suspend fun bypassCloudflare(request: Request): Response? {

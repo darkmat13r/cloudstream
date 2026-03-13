@@ -12,6 +12,7 @@ import androidx.fragment.app.FragmentActivity
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import com.lagradost.api.WeakRef
 import com.lagradost.api.setContext
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.mvvm.safeAsync
@@ -112,7 +113,7 @@ class CloudStreamApp : Application(), SingletonImageLoader.Factory {
             get() = _context?.get()
             private set(value) {
                 _context = WeakReference(value)
-                setContext(WeakReference(value))
+                setContext(WeakRef(value as Any))
             }
 
         fun <T : Any> getKeyClass(path: String, valueType: Class<T>): T? {

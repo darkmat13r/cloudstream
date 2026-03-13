@@ -1,7 +1,5 @@
 package com.lagradost.cloudstream3.extractors
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64Decode
@@ -11,6 +9,10 @@ import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class Tubeless : Voe() {
     override val name = "Tubeless"
@@ -68,8 +70,8 @@ open class Voe : ExtractorApi() {
             return
         }
         val decryptedJson = decryptF7(encodedString)
-        val m3u8 = decryptedJson.get("source")?.asString
-        val mp4 = decryptedJson.get("direct_access_url")?.asString
+        val m3u8 = decryptedJson["source"]?.jsonPrimitive?.content
+        val mp4 = decryptedJson["direct_access_url"]?.jsonPrimitive?.content
 
         if (m3u8 != null) {
             M3u8Helper.generateM3u8(
@@ -105,10 +107,10 @@ open class Voe : ExtractorApi() {
             val vF6 = reverse(vF5)
             val vAtob = base64Decode(vF6)
 
-            JsonParser.parseString(vAtob).asJsonObject
+            Json.parseToJsonElement(vAtob).jsonObject
         } catch (e: Exception) {
             println("Decryption error: ${e.message}")
-            JsonObject()
+            JsonObject(emptyMap())
         }
     }
 

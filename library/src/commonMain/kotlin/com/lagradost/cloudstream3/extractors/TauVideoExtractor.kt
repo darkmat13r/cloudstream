@@ -1,11 +1,12 @@
 // ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.fasterxml.jackson.annotation.JsonProperty
 
 open class TauVideo : ExtractorApi() {
     override val name            = "TauVideo"
@@ -33,12 +34,14 @@ open class TauVideo : ExtractorApi() {
         }
     }
 
+    @Serializable
     data class TauVideoUrls(
-        @JsonProperty("urls") val urls: List<TauVideoData>
+        @SerialName("urls") val urls: List<TauVideoData>
     )
 
+    @Serializable
     data class TauVideoData(
-        @JsonProperty("url")   val url: String,
-        @JsonProperty("label") val label: String,
+        @SerialName("url")   val url: String,
+        @SerialName("label") val label: String,
     )
 }

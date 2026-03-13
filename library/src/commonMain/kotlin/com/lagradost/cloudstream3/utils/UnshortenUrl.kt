@@ -2,9 +2,9 @@ package com.lagradost.cloudstream3.utils
 
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64Decode
-import com.lagradost.nicehttp.NiceResponse
-import java.net.URI
-import java.net.URLDecoder
+import com.lagradost.cloudstream3.network.CloudStreamResponse
+import io.ktor.http.decodeURLPart
+import io.ktor.http.Url
 
 // Code heavily based on unshortenit.py form kodiondemand /addon
 
@@ -54,7 +54,7 @@ object ShortLink {
         while (true) {
             val oldurl = currentUrl
             val domain =
-                URI(currentUrl.trim()).host ?: throw IllegalArgumentException("No domain found in URI!")
+                Url(currentUrl.trim()).host.takeIf { it.isNotEmpty() } ?: throw IllegalArgumentException("No domain found in URI!")
             currentUrl = shortList.firstOrNull {
                 it.regex.find(domain) != null || type == it.type
             }?.function?.let { it(currentUrl) } ?: break
@@ -105,7 +105,7 @@ object ShortLink {
     }
 
     suspend fun unshortenLinkup(uri: String): String {
-        var r: NiceResponse? = null
+        var r: CloudStreamResponse? = null
         var uri = uri
         when {
             uri.contains("/tv/") -> uri = uri.replace("/tv/", "/tva/")
@@ -185,7 +185,7 @@ object ShortLink {
     }
 
     fun unshortenDavisonbarker(uri: String): String {
-        return URLDecoder.decode(uri.substringAfter("dest="), "UTF-8")
+        return uri.substringAfter("dest=").decodeURLPart()
     }
     suspend fun unshortenIsecure(uri: String): String {
         val doc = app.get(uri).document

@@ -7,7 +7,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import java.net.URI
+import io.ktor.http.Url
 
 open class MultiQuality : ExtractorApi() {
     override var name = "MultiQuality"
@@ -27,7 +27,7 @@ open class MultiQuality : ExtractorApi() {
             sourceRegex.findAll(this.text).forEach { sourceMatch ->
                 val extractedUrl = sourceMatch.groupValues[1]
                 // Trusting this isn't mp4, may fuck up stuff
-                if (URI(extractedUrl).path.endsWith(".m3u8")) {
+                if (Url(extractedUrl).encodedPath.endsWith(".m3u8")) {
                     with(app.get(extractedUrl)) {
                         m3u8Regex.findAll(this.text).forEach { match ->
                             extractedLinksList.add(

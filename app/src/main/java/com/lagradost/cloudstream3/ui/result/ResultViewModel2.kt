@@ -12,7 +12,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.actions.AlwaysAskAction
+import com.lagradost.cloudstream3.json
 import com.lagradost.cloudstream3.actions.VideoClickActionHolder
+import kotlinx.serialization.encodeToString
 import com.lagradost.cloudstream3.APIHolder.apis
 import com.lagradost.cloudstream3.APIHolder.getApiFromNameNull
 import com.lagradost.cloudstream3.APIHolder.unixTime
@@ -1297,7 +1299,7 @@ class ResultViewModel2 : ViewModel() {
         episodeIds: Array<String>,
         watchState: VideoWatchState
     ) {
-        val watchStateString = DataStore.mapper.writeValueAsString(watchState)
+        val watchStateString = json.encodeToString(watchState)
         episodeIds.forEach {
             if (getVideoWatchState(it.toInt()) != watchState) {
                 editor.setKeyRaw(

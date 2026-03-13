@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -59,15 +60,17 @@ open class Jeniusplay : ExtractorApi() {
         }
     }
 
+    @Serializable
     data class ResponseSource(
-        @JsonProperty("hls") val hls: Boolean,
-        @JsonProperty("videoSource") val videoSource: String,
-        @JsonProperty("securedLink") val securedLink: String?,
+        @SerialName("hls") val hls: Boolean,
+        @SerialName("videoSource") val videoSource: String,
+        @SerialName("securedLink") val securedLink: String?,
     )
 
+    @Serializable
     data class Tracks(
-        @JsonProperty("kind") val kind: String?,
-        @JsonProperty("file") val file: String,
-        @JsonProperty("label") val label: String?,
+        @SerialName("kind") val kind: String?,
+        @SerialName("file") val file: String,
+        @SerialName("label") val label: String?,
     )
 }

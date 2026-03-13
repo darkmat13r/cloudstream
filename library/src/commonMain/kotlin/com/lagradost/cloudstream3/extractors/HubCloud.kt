@@ -10,7 +10,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import java.net.URI
+import io.ktor.http.Url
 
 @Prerelease
 class HubCloud : ExtractorApi() {
@@ -26,7 +26,7 @@ class HubCloud : ExtractorApi() {
     ) {
         val tag = "HubCloud"
         val realUrl = url.takeIf {
-            try { URI(it).toURL(); true } catch (e: Exception) { Log.e(tag, "Invalid URL: ${e.message}"); false }
+            try { Url(it); true } catch (e: Exception) { Log.e(tag, "Invalid URL: ${e.message}"); false }
         } ?: return
 
         val baseUrl=getBaseUrl(realUrl)
@@ -163,7 +163,7 @@ class HubCloud : ExtractorApi() {
 
     private fun getBaseUrl(url: String): String {
         return try {
-            URI(url).let { "${it.scheme}://${it.host}" }
+            Url(url).let { "${it.protocol.name}://${it.host}" }
         } catch (_: Exception) {
             ""
         }

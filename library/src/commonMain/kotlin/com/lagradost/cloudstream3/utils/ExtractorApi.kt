@@ -1,6 +1,6 @@
 package com.lagradost.cloudstream3.utils
+import kotlinx.serialization.Transient
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import com.lagradost.cloudstream3.AudioFile
 import com.lagradost.cloudstream3.IDownloadableMinimum
 import com.lagradost.cloudstream3.SubtitleFile
@@ -294,10 +294,6 @@ import com.lagradost.cloudstream3.extractors.XStreamCdn
 import com.lagradost.cloudstream3.extractors.Xenolyzb
 import com.lagradost.cloudstream3.extractors.Yipsu
 import com.lagradost.cloudstream3.extractors.YourUpload
-import com.lagradost.cloudstream3.extractors.YoutubeExtractor
-import com.lagradost.cloudstream3.extractors.YoutubeMobileExtractor
-import com.lagradost.cloudstream3.extractors.YoutubeNoCookieExtractor
-import com.lagradost.cloudstream3.extractors.YoutubeShortLinkExtractor
 import com.lagradost.cloudstream3.extractors.Yufiles
 import com.lagradost.cloudstream3.extractors.Yuguaab
 import com.lagradost.cloudstream3.extractors.Zplayer
@@ -307,11 +303,12 @@ import com.lagradost.cloudstream3.mvvm.logError
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import me.xdrop.fuzzywuzzy.FuzzySearch
-import org.jsoup.Jsoup
-import java.net.URI
-import java.util.UUID
+import com.lagradost.cloudstream3.utils.FuzzySearch
+import com.fleeksoft.ksoup.Ksoup
+import io.ktor.http.Url
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * For use in the ConcatenatingMediaSource.
@@ -410,7 +407,7 @@ enum class ExtractorLinkType {
 
 private fun inferTypeFromUrl(url: String): ExtractorLinkType {
     val path = try {
-        URI(url).path
+        Url(url).encodedPath
     } catch (_: Throwable) {
         // don't log magnet links as errors
         null
@@ -432,7 +429,8 @@ val INFER_TYPE: ExtractorLinkType? = null
  *
  * ClearKey is supported on Android devices running Android 5.0 (API Level 21) and up.
  */
-val CLEARKEY_UUID = UUID(-0x1d8e62a7567a4c37L, 0x781AB030AF78D30EL)
+@OptIn(ExperimentalUuidApi::class)
+val CLEARKEY_UUID = Uuid.fromLongs(-0x1d8e62a7567a4c37L, 0x781AB030AF78D30EL)
 
 /**
  * UUID for the Widevine DRM scheme.
@@ -440,7 +438,8 @@ val CLEARKEY_UUID = UUID(-0x1d8e62a7567a4c37L, 0x781AB030AF78D30EL)
  *
  * Widevine is supported on Android devices running Android 4.3 (API Level 18) and up.
  */
-val WIDEVINE_UUID = UUID(-0x121074568629b532L, -0x5c37d8232ae2de13L)
+@OptIn(ExperimentalUuidApi::class)
+val WIDEVINE_UUID = Uuid.fromLongs(-0x121074568629b532L, -0x5c37d8232ae2de13L)
 
 /**
  * UUID for the PlayReady DRM scheme.
@@ -449,7 +448,8 @@ val WIDEVINE_UUID = UUID(-0x121074568629b532L, -0x5c37d8232ae2de13L)
  * PlayReady is supported on all AndroidTV devices. Note that most other Android devices do not
  * provide PlayReady support.
  */
-val PLAYREADY_UUID = UUID(-0x65fb0f8667bfbd7aL, -0x546d19a41f77a06bL)
+@OptIn(ExperimentalUuidApi::class)
+val PLAYREADY_UUID = Uuid.fromLongs(-0x65fb0f8667bfbd7aL, -0x546d19a41f77a06bL)
 
 suspend fun newExtractorLink(
     source: String,
@@ -472,12 +472,13 @@ suspend fun newExtractorLink(
     return builder
 }
 
+@OptIn(ExperimentalUuidApi::class)
 suspend fun newDrmExtractorLink(
     source: String,
     name: String,
     url: String,
     type: ExtractorLinkType? = null,
-    uuid: UUID,
+    uuid: Uuid,
     initializer: suspend DrmExtractorLink.() -> Unit = { }
 ): DrmExtractorLink {
 
@@ -512,6 +513,7 @@ suspend fun newDrmExtractorLink(
  * @see newDrmExtractorLink
  * */
 @Suppress("DEPRECATION")
+@OptIn(ExperimentalUuidApi::class)
 open class DrmExtractorLink private constructor(
     override val source: String,
     override val name: String,
@@ -524,7 +526,7 @@ open class DrmExtractorLink private constructor(
     override var type: ExtractorLinkType,
     open var kid: String? = null,
     open var key: String? = null,
-    open var uuid: UUID,
+    open var uuid: Uuid,
     open var kty: String? = null,
     open var keyRequestParameters: HashMap<String, String>,
     open var licenseUrl: String? = null,
@@ -546,7 +548,7 @@ open class DrmExtractorLink private constructor(
         extractorData: String? = null,
         kid: String? = null,
         key: String? = null,
-        uuid: UUID = CLEARKEY_UUID,
+        uuid: Uuid = CLEARKEY_UUID,
         kty: String? = "oct",
         keyRequestParameters: HashMap<String, String> = hashMapOf(),
         licenseUrl: String? = null,
@@ -581,7 +583,7 @@ open class DrmExtractorLink private constructor(
         extractorData: String? = null,
         kid: String? = null,
         key: String? = null,
-        uuid: UUID = CLEARKEY_UUID,
+        uuid: Uuid = CLEARKEY_UUID,
         kty: String? = "oct",
         keyRequestParameters: HashMap<String, String> = hashMapOf(),
         licenseUrl: String? = null,
@@ -653,7 +655,6 @@ constructor(
         return videoSize
     }
 
-    @JsonIgnore
     fun getAllHeaders(): Map<String, String> {
         if (referer.isBlank()) {
             return headers
@@ -1118,10 +1119,6 @@ val extractorApis: MutableList<ExtractorApi> = arrayListOf(
     DatabaseGdrive2(),
     Mediafire(),
 
-    YoutubeExtractor(),
-    YoutubeShortLinkExtractor(),
-    YoutubeMobileExtractor(),
-    YoutubeNoCookieExtractor(),
     Streamlare(),
     PlayLtXyz(),
 
@@ -1234,8 +1231,13 @@ val extractorApis: MutableList<ExtractorApi> = arrayListOf(
     GUpload(),
     HlsWish(),
     ByseQekaho(),
-)
+).apply { addAll(getPlatformExtractors()) }
 
+/**
+ * Returns platform-specific extractors (e.g., YouTube on JVM/Android via NewPipeExtractor).
+ * Empty list on platforms where these extractors are not available.
+ */
+expect fun getPlatformExtractors(): List<ExtractorApi>
 
 fun getExtractorApiFromName(name: String): ExtractorApi {
     for (api in extractorApis) {
@@ -1253,7 +1255,7 @@ fun httpsify(url: String): String {
 }
 
 suspend fun getPostForm(requestUrl: String, html: String): String? {
-    val document = Jsoup.parse(html)
+    val document = Ksoup.parse(html = html)
     val inputs = document.select("Form > input")
     if (inputs.size < 4) return null
     var op: String? = null
@@ -1323,7 +1325,7 @@ abstract class ExtractorApi {
     //}
 
     // this is the new extractorapi, override to add subtitles and stuff
-    @Throws
+    @Throws(Exception::class)
     open suspend fun getUrl(
         url: String,
         referer: String? = null,
@@ -1349,7 +1351,7 @@ abstract class ExtractorApi {
     /**
      * Will throw errors, use getSafeUrl if you don't want to handle the exception yourself
      */
-    @Throws
+    @Throws(Exception::class)
     open suspend fun getUrl(url: String, referer: String? = null): List<ExtractorLink>? {
         return emptyList()
     }

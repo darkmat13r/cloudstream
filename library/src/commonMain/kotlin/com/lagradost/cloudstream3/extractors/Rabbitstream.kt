@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
@@ -9,14 +10,10 @@ import com.lagradost.cloudstream3.base64Encode
 import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.CryptoHelper
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 class Megacloud : Rabbitstream() {
     override val name = "Megacloud"
@@ -142,7 +139,7 @@ open class Rabbitstream : ExtractorApi() {
         return decryptSourceUrl(
             generateKey(
                 base64DecodeArray(input).copyOfRange(8, 16),
-                key.toByteArray()
+                key.encodeToByteArray()
             ), input
         )
     }
@@ -158,43 +155,45 @@ open class Rabbitstream : ExtractorApi() {
     }
 
     private fun md5(input: ByteArray): ByteArray {
-        return MessageDigest.getInstance("MD5").digest(input)
+        return CryptoHelper.md5(input)
     }
 
     private fun decryptSourceUrl(decryptionKey: ByteArray, sourceUrl: String): String {
         val cipherData = base64DecodeArray(sourceUrl)
         val encrypted = cipherData.copyOfRange(16, cipherData.size)
-        val aesCBC = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        aesCBC.init(
-            Cipher.DECRYPT_MODE,
-            SecretKeySpec(decryptionKey.copyOfRange(0, 32), "AES"),
-            IvParameterSpec(decryptionKey.copyOfRange(32, decryptionKey.size))
+        val decryptedData = CryptoHelper.aesCbcDecrypt(
+            encrypted,
+            decryptionKey.copyOfRange(0, 32),
+            decryptionKey.copyOfRange(32, decryptionKey.size)
         )
-        val decryptedData = aesCBC?.doFinal(encrypted) ?: throw ErrorLoadingException("Cipher not found")
-        return String(decryptedData, StandardCharsets.UTF_8)
+        return decryptedData.decodeToString()
     }
 
+    @Serializable
     data class Tracks(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("label") val label: String? = null,
-        @JsonProperty("kind") val kind: String? = null,
+        @SerialName("file") val file: String? = null,
+        @SerialName("label") val label: String? = null,
+        @SerialName("kind") val kind: String? = null,
     )
 
+    @Serializable
     data class Sources(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("type") val type: String? = null,
-        @JsonProperty("label") val label: String? = null,
+        @SerialName("file") val file: String? = null,
+        @SerialName("type") val type: String? = null,
+        @SerialName("label") val label: String? = null,
     )
 
+    @Serializable
     data class SourcesResponses(
-        @JsonProperty("sources") val sources: List<Sources?>? = emptyList(),
-        @JsonProperty("tracks") val tracks: List<Tracks?>? = emptyList(),
+        @SerialName("sources") val sources: List<Sources?>? = emptyList(),
+        @SerialName("tracks") val tracks: List<Tracks?>? = emptyList(),
     )
 
+    @Serializable
     data class SourcesEncrypted(
-        @JsonProperty("sources") val sources: String? = null,
-        @JsonProperty("encrypted") val encrypted: Boolean? = null,
-        @JsonProperty("tracks") val tracks: List<Tracks?>? = emptyList(),
+        @SerialName("sources") val sources: String? = null,
+        @SerialName("encrypted") val encrypted: Boolean? = null,
+        @SerialName("tracks") val tracks: List<Tracks?>? = emptyList(),
     )
 
 }

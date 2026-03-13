@@ -1,14 +1,17 @@
 package com.lagradost.cloudstream3.extractors
 
-import com.google.gson.JsonParser
 import com.lagradost.api.Log
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
-import java.net.URI
+import io.ktor.http.Url
 
 class Techinmind: GDMirrorbot() {
     override var name = "Techinmind Cloud AIO"
@@ -48,15 +51,14 @@ open class GDMirrorbot : ExtractorApi() {
                 pageText = app.get(apiUrl).text
             }
 
-            val jsonElement = JsonParser.parseString(pageText)
-            if (!jsonElement.isJsonObject) return
-            val jsonObject = jsonElement.asJsonObject
+            val jsonElement = try { Json.parseToJsonElement(pageText) } catch (_: Exception) { return }
+            val jsonObject = try { jsonElement.jsonObject } catch (_: Exception) { return }
 
             val embedId = url.substringAfterLast("/")
-            val sidValue = jsonObject["data"]?.asJsonArray
-                ?.takeIf { it.size() > 0 }
-                ?.get(0)?.asJsonObject
-                ?.get("fileslug")?.asString
+            val sidValue = jsonObject["data"]?.jsonArray
+                ?.takeIf { it.size > 0 }
+                ?.get(0)?.jsonObject
+                ?.get("fileslug")?.jsonPrimitive?.content
                 ?.takeIf { it.isNotBlank() } ?: embedId
 
             Pair(sidValue, hostUrl)
@@ -65,18 +67,18 @@ open class GDMirrorbot : ExtractorApi() {
         val postData = mapOf("sid" to sid)
         val responseText = app.post("$host/embedhelper.php", data = postData).text
 
-        val rootElement = JsonParser.parseString(responseText)
-        if (!rootElement.isJsonObject) return
-        val root = rootElement.asJsonObject
+        val rootElement = try { Json.parseToJsonElement(responseText) } catch (_: Exception) { return }
+        val root = try { rootElement.jsonObject } catch (_: Exception) { return }
 
-        val siteUrls = root["siteUrls"]?.asJsonObject ?: return
-        val siteFriendlyNames = root["siteFriendlyNames"]?.asJsonObject
+        val siteUrls = root["siteUrls"]?.jsonObject ?: return
+        val siteFriendlyNames = try { root["siteFriendlyNames"]?.jsonObject } catch (_: Exception) { null }
 
         val decodedMresult = when {
-            root["mresult"]?.isJsonObject == true -> root["mresult"]!!.asJsonObject
-            root["mresult"]?.isJsonPrimitive == true -> try {
-                base64Decode(root["mresult"]!!.asString)
-                    .let { JsonParser.parseString(it).asJsonObject }
+            root["mresult"] != null && (try { root["mresult"]!!.jsonObject; true } catch (_: Exception) { false }) ->
+                root["mresult"]!!.jsonObject
+            root["mresult"] != null && (try { root["mresult"]!!.jsonPrimitive; true } catch (_: Exception) { false }) -> try {
+                base64Decode(root["mresult"]!!.jsonPrimitive.content)
+                    .let { Json.parseToJsonElement(it).jsonObject }
             } catch (e: Exception) {
                 Log.e("GDMirrorbot", "Failed to decode mresult: $e")
                 return
@@ -84,11 +86,11 @@ open class GDMirrorbot : ExtractorApi() {
             else -> return
         }
 
-        siteUrls.keySet().intersect(decodedMresult.keySet()).forEach { key ->
-            val base = siteUrls[key]?.asString?.trimEnd('/') ?: return@forEach
-            val path = decodedMresult[key]?.asString?.trimStart('/') ?: return@forEach
+        siteUrls.keys.intersect(decodedMresult.keys).forEach { key ->
+            val base = siteUrls[key]?.jsonPrimitive?.content?.trimEnd('/') ?: return@forEach
+            val path = decodedMresult[key]?.jsonPrimitive?.content?.trimStart('/') ?: return@forEach
             val fullUrl = "$base/$path"
-            val friendlyName = siteFriendlyNames?.get(key)?.asString ?: key
+            val friendlyName = siteFriendlyNames?.get(key)?.jsonPrimitive?.content ?: key
 
             try {
                 when (friendlyName) {
@@ -103,7 +105,7 @@ open class GDMirrorbot : ExtractorApi() {
     }
 
     private fun getBaseUrl(url: String): String {
-        return URI(url).let { "${it.scheme}://${it.host}" }
+        return Url(url).let { "${it.protocol.name}://${it.host}" }
     }
 }
 

@@ -1,5 +1,7 @@
 package com.lagradost.cloudstream3.ui.settings
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -9,7 +11,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.core.os.ConfigurationCompat
 import androidx.preference.PreferenceManager
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.APIHolder.allProviders
 import com.lagradost.cloudstream3.CloudStreamApp
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.getKey
@@ -144,14 +145,15 @@ class SettingsGeneral : BasePreferenceFragmentCompat() {
         setToolBarScrollFlags()
     }
 
+    @Serializable
     data class CustomSite(
-        @JsonProperty("parentJavaClass") // javaClass.simpleName
+        @SerialName("parentJavaClass") // javaClass.simpleName
         val parentJavaClass: String,
-        @JsonProperty("name")
+        @SerialName("name")
         val name: String,
-        @JsonProperty("url")
+        @SerialName("url")
         val url: String,
-        @JsonProperty("lang")
+        @SerialName("lang")
         val lang: String,
     )
 

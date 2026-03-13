@@ -6,30 +6,29 @@
 
 package com.lagradost.cloudstream3
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.module.kotlin.kotlinModule
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.DateHelper
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.Coroutines.mainWork
 import com.lagradost.cloudstream3.utils.Coroutines.threadSafeListOf
 import com.lagradost.cloudstream3.utils.SubtitleHelper.fromCodeToLangTagIETF
 import com.lagradost.cloudstream3.utils.SubtitleHelper.fromLanguageToTagIETF
-import com.lagradost.nicehttp.RequestBodyTypes
-import okhttp3.Interceptor
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.net.URI
-import java.text.SimpleDateFormat
-import java.util.*
+import com.lagradost.cloudstream3.network.Interceptor
+import com.lagradost.cloudstream3.network.RequestBodyTypes
+import com.lagradost.cloudstream3.network.toMediaTypeOrNull
+import com.lagradost.cloudstream3.network.toRequestBody
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.jvm.JvmName
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -58,74 +57,63 @@ const val USER_AGENT =
 class ErrorLoadingException(message: String? = null) : Exception(message)
 
 //val baseHeader = mapOf("User-Agent" to USER_AGENT)
-val mapper = JsonMapper.builder().addModule(kotlinModule())
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).build()!!
+val json = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    encodeDefaults = true
+}
 
 object APIHolder {
     val unixTime: Long
-        get() = System.currentTimeMillis() / 1000L
+        get() = DateHelper.currentTimeMillis() / 1000L
     val unixTimeMS: Long
-        get() = System.currentTimeMillis()
+        get() = DateHelper.currentTimeMillis()
 
     // ConcurrentModificationException is possible!!!
     val allProviders = threadSafeListOf<MainAPI>()
 
     fun initAll() {
-        synchronized(allProviders) {
-            for (api in allProviders) {
-                api.init()
-            }
+        for (api in allProviders) {
+            api.init()
         }
         apiMap = null
     }
 
     /** String extension function to Capitalize first char of string.*/
     fun String.capitalize(): String {
-        return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        return DateHelper.capitalizeFirstChar(this)
     }
 
     var apis: List<MainAPI> = threadSafeListOf()
     var apiMap: Map<String, Int>? = null
 
     fun addPluginMapping(plugin: MainAPI) {
-        synchronized(apis) {
-            apis = apis + plugin
-        }
+        apis = apis + plugin
         initMap(true)
     }
 
     fun removePluginMapping(plugin: MainAPI) {
-        synchronized(apis) {
-            apis = apis.filter { it != plugin }
-        }
+        apis = apis.filter { it != plugin }
         initMap(true)
     }
 
     private fun initMap(forcedUpdate: Boolean = false) {
-        synchronized(apis) {
-            if (apiMap == null || forcedUpdate)
-                apiMap = apis.mapIndexed { index, api -> api.name to index }.toMap()
-        }
+        if (apiMap == null || forcedUpdate)
+            apiMap = apis.mapIndexed { index, api -> api.name to index }.toMap()
     }
 
     fun getApiFromNameNull(apiName: String?): MainAPI? {
         if (apiName == null) return null
-        synchronized(allProviders) {
-            initMap()
-            synchronized(apis) {
-                return apiMap?.get(apiName)?.let { apis.getOrNull(it) }
-                // Leave the ?. null check, it can crash regardless
-                    ?: allProviders.firstOrNull { it.name == apiName }
-            }
-        }
+        initMap()
+        return apiMap?.get(apiName)?.let { apis.getOrNull(it) }
+        // Leave the ?. null check, it can crash regardless
+            ?: allProviders.firstOrNull { it.name == apiName }
     }
 
     fun getApiFromUrlNull(url: String?): MainAPI? {
         if (url == null) return null
-        synchronized(allProviders) {
-            allProviders.forEach { api ->
-                if (url.startsWith(api.mainUrl)) return api
-            }
+        allProviders.forEach { api ->
+            if (url.startsWith(api.mainUrl)) return api
         }
         return null
     }
@@ -145,9 +133,9 @@ object APIHolder {
     // To get the key
     suspend fun getCaptchaToken(url: String, key: String, referer: String? = null): String? {
         try {
-            val uri = URI.create(url)
+            val parsedUrl = Url(url)
             val domain = base64Encode(
-                (uri.scheme + "://" + uri.host + ":443").encodeToByteArray(),
+                (parsedUrl.protocol.name + "://" + parsedUrl.host + ":443").encodeToByteArray(),
             ).replace("\n", "").replace("=", ".")
 
             val vToken =
@@ -353,15 +341,17 @@ const val PROVIDER_STATUS_SLOW = 2
 const val PROVIDER_STATUS_OK = 1
 const val PROVIDER_STATUS_DOWN = 0
 
+@Serializable
 data class ProvidersInfoJson(
-    @JsonProperty("name") var name: String,
-    @JsonProperty("url") var url: String,
-    @JsonProperty("credentials") var credentials: String? = null,
-    @JsonProperty("status") var status: Int,
+    @SerialName("name") var name: String,
+    @SerialName("url") var url: String,
+    @SerialName("credentials") var credentials: String? = null,
+    @SerialName("status") var status: Int,
 )
 
+@Serializable
 data class SettingsJson(
-    @JsonProperty("enableAdult") var enableAdult: Boolean = false,
+    @SerialName("enableAdult") var enableAdult: Boolean = false,
 )
 
 
@@ -456,7 +446,7 @@ abstract class MainAPI {
     }
 
     fun init() {
-        overrideData?.get(this.javaClass.simpleName)?.let { data ->
+        overrideData?.get(this::class.simpleName)?.let { data ->
             overrideWithNewData(data)
         }
     }
@@ -672,7 +662,13 @@ abstract class MainAPI {
 
 /** Might need a different implementation for desktop*/
 fun base64Decode(string: String): String {
-    return String(base64DecodeArray(string), Charsets.ISO_8859_1)
+    return base64DecodeArray(string).let { bytes ->
+        buildString(bytes.size) {
+            for (b in bytes) {
+                append(b.toInt().and(0xFF).toChar())
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -752,22 +748,6 @@ fun fixTitle(str: String): String {
     }
 }
 
-/**
- * Get rhino context in a safe way as it needs to be initialized on the main thread.
- *
- * Make sure you get the scope using: val scope: Scriptable = rhino.initSafeStandardObjects()
- *
- * Use like the following: rhino.evaluateString(scope, js, "JavaScript", 1, null)
- **/
-suspend fun getRhinoContext(): org.mozilla.javascript.Context {
-    return Coroutines.mainWork {
-        val rhino = org.mozilla.javascript.Context.enter()
-        rhino.initSafeStandardObjects()
-        rhino.setInterpretedMode(true)
-        rhino
-    }
-}
-
 /** https://www.imdb.com/title/tt2861424/ -> tt2861424
  * @param url Imdb Url you need to get the Id from.
  * @return imdb id formatted string
@@ -824,10 +804,10 @@ enum class DubStatus(val id: Int) {
  * Internally it stores it as an int up to 10^9 to represent up to 10 significant digits. So think
  * of this as a decimal class specifically for ratings.
  * */
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+@Serializable
 class Score private constructor(
     /** Decimal between [0, 10^9] representing the min score and max score respectively */
-    @JsonProperty("data")
+    @SerialName("data")
     private val data: Int,
 ) {
     override fun hashCode(): Int = this.data.hashCode()
@@ -1292,19 +1272,14 @@ fun getQualityFromString(string: String?): SearchQuality? {
  */
 fun MainAPI.updateUrl(url: String): String {
     try {
-        val original = URI(url)
-        val updated = URI(mainUrl)
+        val original = Url(url)
+        val updated = Url(mainUrl)
 
-        // URI(String scheme, String userInfo, String host, int port, String path, String query, String fragment)
-        return URI(
-            updated.scheme,
-            original.userInfo,
-            updated.host,
-            updated.port,
-            original.path,
-            original.query,
-            original.fragment
-        ).toString()
+        return URLBuilder(original).apply {
+            protocol = updated.protocol
+            host = updated.host
+            port = updated.port
+        }.buildString()
     } catch (t: Throwable) {
         logError(t)
         return url
@@ -1471,7 +1446,7 @@ constructor(
 
     override var posterUrl: String? = null,
     var year: Int? = null,
-    var dubStatus: EnumSet<DubStatus>? = null,
+    var dubStatus: MutableSet<DubStatus>? = null,
 
     var otherName: String? = null,
     var episodes: MutableMap<DubStatus, Int> = mutableMapOf(),
@@ -1494,7 +1469,7 @@ constructor(
 
         posterUrl: String? = null,
         year: Int? = null,
-        dubStatus: EnumSet<DubStatus>? = null,
+        dubStatus: MutableSet<DubStatus>? = null,
 
         otherName: String? = null,
         episodes: MutableMap<DubStatus, Int> = mutableMapOf(),
@@ -1519,7 +1494,7 @@ constructor(
 }
 
 fun AnimeSearchResponse.addDubStatus(status: DubStatus, episodes: Int? = null) {
-    this.dubStatus = dubStatus?.also { it.add(status) } ?: EnumSet.of(status)
+    this.dubStatus = dubStatus?.also { it.add(status) } ?: mutableSetOf(status)
     if (this.type?.isMovieType() != true)
         if (episodes != null && episodes > 0)
             this.episodes[status] = episodes
@@ -2521,14 +2496,14 @@ constructor(
 
 fun Episode.addDate(date: String?, format: String = "yyyy-MM-dd") {
     try {
-        this.date = SimpleDateFormat(format, Locale.getDefault()).parse(date ?: return)?.time
+        this.date = DateHelper.parseDate(date ?: return, format)
     } catch (e: Exception) {
         logError(e)
     }
 }
 
-fun Episode.addDate(date: Date?) {
-    this.date = date?.time
+fun Episode.addDate(epochMillis: Long?) {
+    this.date = epochMillis
 }
 
 fun MainAPI.newEpisode(
@@ -2679,32 +2654,38 @@ data class Tracker(
     val cover: String? = null,
 )
 
+@Serializable
 data class AniSearch(
-    @JsonProperty("data") var data: Data? = Data()
+    @SerialName("data") var data: Data? = Data()
 ) {
+    @Serializable
     data class Data(
-        @JsonProperty("Page") var page: Page? = Page()
+        @SerialName("Page") var page: Page? = Page()
     ) {
+        @Serializable
         data class Page(
-            @JsonProperty("media") var media: ArrayList<Media> = arrayListOf()
+            @SerialName("media") var media: ArrayList<Media> = arrayListOf()
         ) {
+            @Serializable
             data class Media(
-                @JsonProperty("title") var title: Title? = null,
-                @JsonProperty("id") var id: Int? = null,
-                @JsonProperty("idMal") var idMal: Int? = null,
-                @JsonProperty("seasonYear") var seasonYear: Int? = null,
-                @JsonProperty("format") var format: String? = null,
-                @JsonProperty("coverImage") var coverImage: CoverImage? = null,
-                @JsonProperty("bannerImage") var bannerImage: String? = null,
+                @SerialName("title") var title: Title? = null,
+                @SerialName("id") var id: Int? = null,
+                @SerialName("idMal") var idMal: Int? = null,
+                @SerialName("seasonYear") var seasonYear: Int? = null,
+                @SerialName("format") var format: String? = null,
+                @SerialName("coverImage") var coverImage: CoverImage? = null,
+                @SerialName("bannerImage") var bannerImage: String? = null,
             ) {
+                @Serializable
                 data class CoverImage(
-                    @JsonProperty("extraLarge") var extraLarge: String? = null,
-                    @JsonProperty("large") var large: String? = null,
+                    @SerialName("extraLarge") var extraLarge: String? = null,
+                    @SerialName("large") var large: String? = null,
                 )
 
+                @Serializable
                 data class Title(
-                    @JsonProperty("romaji") var romaji: String? = null,
-                    @JsonProperty("english") var english: String? = null,
+                    @SerialName("romaji") var romaji: String? = null,
+                    @SerialName("english") var english: String? = null,
                 ) {
                     fun isMatchingTitles(title: String?): Boolean {
                         if (title == null) return false

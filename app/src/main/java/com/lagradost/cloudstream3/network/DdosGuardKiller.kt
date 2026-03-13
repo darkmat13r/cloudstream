@@ -2,10 +2,9 @@ package com.lagradost.cloudstream3.network
 
 import androidx.annotation.AnyThread
 import com.lagradost.cloudstream3.app
-import com.lagradost.nicehttp.Requests
-import com.lagradost.nicehttp.cookies
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 
@@ -41,14 +40,14 @@ class DdosGuardKiller(private val alwaysBypass: Boolean) : Interceptor {
             savedCookiesMap[request.url.host]
             // If no cookies are found fetch and save em.
                 ?: (request.url.scheme + "://" + request.url.host + (ddosBypassPath ?: "")).let {
-                    // Somehow app.get fails
-                    Requests().get(it).cookies.also { cookies ->
+                    // Use app client to fetch cookies
+                    app.get(it).cookies.also { cookies ->
                         savedCookiesMap[request.url.host] = cookies
                     }
                 }
 
         val headers = getHeaders(request.headers.toMap(), cookies + request.cookies)
-        return app.baseClient.newCall(
+        return (app.baseClient as OkHttpClient).newCall(
             request.newBuilder()
                 .headers(headers)
                 .build()

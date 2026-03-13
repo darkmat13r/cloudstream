@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
@@ -32,7 +33,8 @@ open class Minoplres : ExtractorApi() {
         return sources
     }
 
+    @Serializable
     private data class File(
-        @JsonProperty("file") val file: String,
+        @SerialName("file") val file: String,
     )
 }

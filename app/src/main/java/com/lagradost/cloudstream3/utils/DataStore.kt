@@ -3,15 +3,16 @@ package com.lagradost.cloudstream3.utils
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.getKeyClass
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.removeKey
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.setKeyClass
+import com.lagradost.cloudstream3.json
 import com.lagradost.cloudstream3.mvvm.logError
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.serializer
 import androidx.core.content.edit
 
 /** Used to display metadata about downloads and resume watching */
@@ -88,8 +89,6 @@ data class Editor(
 }
 
 object DataStore {
-    val mapper: JsonMapper = JsonMapper.builder().addModule(kotlinModule())
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).build()
 
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -162,10 +161,14 @@ object DataStore {
         }
     }
 
+    @OptIn(InternalSerializationApi::class)
+    @Suppress("UNCHECKED_CAST")
     fun <T> Context.setKey(path: String, value: T) {
         try {
+            val v = value ?: return
+            val serializer = (v::class as kotlin.reflect.KClass<Any>).serializer()
             getSharedPrefs().edit {
-                putString(path, mapper.writeValueAsString(value))
+                putString(path, json.encodeToString(serializer, v))
             }
         } catch (e: Exception) {
             logError(e)
@@ -186,11 +189,13 @@ object DataStore {
     }
 
     inline fun <reified T : Any> String.toKotlinObject(): T {
-        return mapper.readValue(this, T::class.java)
+        return json.decodeFromString(this)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun <T> String.toKotlinObject(valueType: Class<T>): T {
-        return mapper.readValue(this, valueType)
+        val serializer = json.serializersModule.serializer(valueType)
+        return json.decodeFromString(serializer, this) as T
     }
 
     // GET KEY GIVEN PATH AND DEFAULT VALUE, NULL IF ERROR

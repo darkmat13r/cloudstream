@@ -1,14 +1,14 @@
 package com.lagradost.cloudstream3.utils
 
-import java.net.URLDecoder
-import java.net.URLEncoder
+import io.ktor.http.decodeURLPart
+import io.ktor.http.encodeURLParameter
 
 object StringUtils {
     fun String.encodeUri(): String {
-        return URLEncoder.encode(this, "UTF-8")
+        return this.encodeURLParameter()
     }
 
     fun String.decodeUri(): String {
-        return URLDecoder.decode(this, "UTF-8")
+        return this.decodeURLPart()
     }
 }

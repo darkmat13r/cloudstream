@@ -1,11 +1,12 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.extractors.helper.AesHelper.cryptoAESHandler
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import org.jsoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Element
 
 class DatabaseGdrive2 : Gdriveplayer() {
     override var mainUrl = "https://databasegdriveplayer.co"
@@ -83,7 +84,7 @@ open class Gdriveplayer : ExtractorApi() {
             ?.split(Regex("\\D+"))
             ?.joinToString("") {
                 Char(it.toInt()).toString()
-            }.let { Regex("var pass = \"(\\S+?)\"").first(it ?: return)?.toByteArray() }
+            }.let { Regex("var pass = \"(\\S+?)\"").first(it ?: return)?.encodeToByteArray() }
             ?: throw ErrorLoadingException("can't find password")
         val decryptedData = cryptoAESHandler(data, password, false, "AES/CBC/NoPadding")?.let { getAndUnpack(it) }?.replace("\\", "")
 
@@ -119,10 +120,11 @@ open class Gdriveplayer : ExtractorApi() {
 
     }
 
+    @Serializable
     data class Tracks(
-        @JsonProperty("file") val file: String,
-        @JsonProperty("kind") val kind: String,
-        @JsonProperty("label") val label: String
+        @SerialName("file") val file: String,
+        @SerialName("kind") val kind: String,
+        @SerialName("label") val label: String
     )
 
 }

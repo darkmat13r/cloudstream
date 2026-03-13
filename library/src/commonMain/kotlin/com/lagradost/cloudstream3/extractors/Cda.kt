@@ -1,4 +1,5 @@
 package com.lagradost.cloudstream3.extractors
+import kotlinx.serialization.Serializable
 
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
@@ -7,7 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import java.net.URLDecoder
+import io.ktor.http.decodeURLPart
 
 open class Cda : ExtractorApi() {
     override var mainUrl = "https://ebd.cda.pl"
@@ -65,12 +66,12 @@ open class Cda : ExtractorApi() {
             .replace("_QWE", "")
             .replace("_Q5", "")
             .replace("_IKSDE", "")
-        a = URLDecoder.decode(a, "UTF-8")
+        a = a.decodeURLPart()
         a = a.map { char ->
             if (char.code in 33..126) {
-                return@map String.format("%c", 33 + (char.code + 14) % 94)
+                return@map (33 + (char.code + 14) % 94).toChar().toString()
             } else {
-                return@map char
+                return@map char.toString()
             }
         }.joinToString("")
         a = a
@@ -87,14 +88,16 @@ open class Cda : ExtractorApi() {
         else -> a
     }
 
+    @Serializable
     data class VideoPlayerData(
         val file: String,
         val qualities: Map<String, String> = mapOf(),
-        val quality: String?,
-        val ts: Int?,
-        val hash2: String?
+        val quality: String? = null,
+        val ts: Int? = null,
+        val hash2: String? = null
     )
 
+    @Serializable
     data class PlayerData(
         val video: VideoPlayerData
     )
